@@ -39,17 +39,11 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 
-// MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/Bodhi';
-mongoose.connect(MONGODB_URI, {
-  dbName: 'Bodhi'
-})
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
-
-// Routes will go here
-// Book routes
+// Routes
+const indexRoute = require('./routes/index');
 const bookRoutes = require('./routes/books.js');
+
+app.use('/', indexRoute);
 app.use('/api/books', bookRoutes);
 
 // TODO
