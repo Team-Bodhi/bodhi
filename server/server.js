@@ -62,7 +62,7 @@ app.use('/api/books', bookRoutes);
 // TODO
 // Manufacturer order routes
 const manufacturerOrderRoutes = require('./routes/manufacturerOrders');
-app.use('/api/manufacturer-orders', manufacturerOrderRoutes);
+app.use('/api/manufacturerOrders', manufacturerOrderRoutes);
 
 // Basic health check route
 app.get('/health', (req, res) => {

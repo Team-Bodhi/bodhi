@@ -27,6 +27,12 @@ const mongoose = require('mongoose');
  *         supplierName:
  *           type: string
  *           description: Supplier the order is sent to
+ *         booksOrdered:
+ *           type: array
+ *           bookIDs:
+ *             type: string
+ *           quantity:
+ *             type: number
  *         status:
  *           type: string
  *           description: Status of the order (init pending)
