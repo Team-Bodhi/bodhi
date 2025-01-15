@@ -160,6 +160,8 @@ const Book = mongoose.model('Book', bookSchema);
  * /api/books:
  *   get:
  *     summary: Returns a list of books
+ *     tags: 
+ *       - Book Inventory
  *     parameters:
  *       - in: query
  *         name: genre
@@ -214,6 +216,8 @@ router.get('/', async (req, res) => {
  * /api/books/{id}:
  *   get:
  *     summary: Get a book by id
+ *     tags: 
+ *       - Book Inventory
  *     parameters:
  *       - in: path
  *         name: id
@@ -248,6 +252,8 @@ router.get('/:id', async (req, res) => {
  * /api/books:
  *   post:
  *     summary: Create a new book
+ *     tags: 
+ *       - Book Inventory
  *     requestBody:
  *       required: true
  *       content:
@@ -278,6 +284,8 @@ router.post('/', async (req, res) => {
  * /api/books/{id}:
  *   put:
  *     summary: Update a book
+ *     tags: 
+ *       - Book Inventory
  *     parameters:
  *       - in: path
  *         name: id
@@ -337,6 +345,8 @@ router.put('/:id', async (req, res) => {
  * /api/books/{id}:
  *   delete:
  *     summary: Delete a book
+ *     tags: 
+ *       - Book Inventory
  *     parameters:
  *       - in: path
  *         name: id
