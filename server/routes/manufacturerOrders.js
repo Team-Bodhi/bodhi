@@ -11,8 +11,9 @@ const mongoose = require('mongoose');
  *       required:
  *         - orderNumber
  *         - supplierName
- *         - booksOrdered
+ *         - bookOrders
  *         - status
+ *         - totalCost
  *         - orderDate
  *         - expectedDeliveryDate
  *         - createdAt
@@ -27,15 +28,24 @@ const mongoose = require('mongoose');
  *         supplierName:
  *           type: string
  *           description: Supplier the order is sent to
- *         booksOrdered:
+ *         bookOrders:
  *           type: array
- *           bookIDs:
- *             type: string
- *           quantity:
- *             type: number
+ *           description: list of books ordered
+ *           items:
+ *             type: object
+ *             properties:
+ *               bookId: 
+ *                 type: string
+ *                 description: ObjectId of book ordered
+ *               quantity: 
+ *                 type: number
+ *                 description: quantity ordered of specific book
  *         status:
  *           type: string
  *           description: Status of the order (init pending)
+ *         totalCost:
+ *           type: number
+ *           description: Total cost of the order
  *         orderDate:
  *           type: string
  *           format: date
@@ -54,7 +64,7 @@ const mongoose = require('mongoose');
  *           description: Any updates to the order will change this value
  */
 
-// Book Schema
+// Mfr Order Schema
 const mfrOrderSchema = new mongoose.Schema({
   orderNumber: {
     type: String,
@@ -66,9 +76,23 @@ const mfrOrderSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  booksOrdered: [{
+    bookId: {
+      type: String,
+      required: true
+    },
+    quantity: {
+      type: Number,
+      min: 0 
+    }  
+  }],
   status: {
     type: String,
     required: true
+  },
+  totalCost: {
+    type: Number,
+    min: 0.0
   },
   orderDate: {
     type: Date,
@@ -88,9 +112,7 @@ const mfrOrderSchema = new mongoose.Schema({
   }
 });
 
-// Add index for common queries
-mfrOrderSchema.index({ orderNumber: 1, supplierName: 1 });
-
+mfrOrderSchema.index({ orderNumber: 1 });
 const MfrOrder = mongoose.model('MfrOrder', mfrOrderSchema);
 
 /**
@@ -98,6 +120,8 @@ const MfrOrder = mongoose.model('MfrOrder', mfrOrderSchema);
  * /api/manufacturerOrders:
  *   get:
  *     summary: Returns a list of vendor orders
+ *     tags:
+ *       - Manufacturer Orders
  *     parameters:
  *       - in: query
  *         name: supplierName
@@ -121,10 +145,10 @@ const MfrOrder = mongoose.model('MfrOrder', mfrOrderSchema);
  */
 router.get('/', async (req, res) => {
   try {
-    const { orderNumber, status } = req.query;
+    const { supplierName, status } = req.query;
     let query = {};
 
-    if (orderNumber) query.orderNumber = orderNumber;
+    if (supplierName) query.supplierName = supplierName;
     if (status) query.status = status;
 
     console.log('Collection name:', MfrOrder.collection.name);
