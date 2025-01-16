@@ -22,7 +22,7 @@ const mongoose = require('mongoose');
  *         - price
  *       properties:
  *         _id:
- *           type: string
+ *           type: object
  *           description: Auto-generated MongoDB ID
  *         title:
  *           type: string
@@ -74,6 +74,9 @@ const mongoose = require('mongoose');
 
 // Book Schema
 const bookSchema = new mongoose.Schema({
+  _id: {
+    type: Object
+  },
   title: {
     type: String,
     required: true,
@@ -269,6 +272,8 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const book = new Book(req.body);
+    const id = new mongoose.Types.ObjectId;
+    book._id = id;
     const savedBook = await book.save();
     res.status(201).json(savedBook);
   } catch (error) {
