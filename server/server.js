@@ -50,9 +50,13 @@ app.use(express.json());
 // Routes
 const indexRoute = require('./routes/index');
 const bookRoutes = require('./routes/books.js');
+const userRoutes = require('./routes/users.js');
 
 app.use('/', indexRoute);
 app.use('/api/books', bookRoutes);
+
+// users
+app.use('/api/users', userRoutes);
 
 // TODO
 // Customer order routes
