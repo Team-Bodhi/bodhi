@@ -50,12 +50,12 @@ app.use(express.json());
 // Routes
 const indexRoute = require('./routes/index');
 const bookRoutes = require('./routes/books.js');
+const customerRoutes = require('./routes/customers');
 const userRoutes = require('./routes/users.js');
 
 app.use('/', indexRoute);
 app.use('/api/books', bookRoutes);
-
-// users
+app.use('/api/customers', customerRoutes);
 app.use('/api/users', userRoutes);
 
 // TODO
