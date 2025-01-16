@@ -18,7 +18,7 @@ const mongoose = require('mongoose');
  *         - lastLogin
  *       properties:
  *         _id:
- *           type: string
+ *           type: object
  *           description: Auto-generated MongoDB ID
  *         username:
  *           type: string
@@ -47,7 +47,7 @@ const mongoose = require('mongoose');
 // User Schema
 const usersSchema = new mongoose.Schema({
   _id: {
-    type: mongoose.Types.ObjectId(),
+    type: Object,
     default: new mongoose.Types.ObjectId()
   },
   username: {
@@ -151,6 +151,8 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const user = new Users(req.body);
+    const id = new mongoose.Types.ObjectId();
+    user._id = id;
     const savedUser = await user.save();
     res.status(201).json(savedUser);
   } catch (error) {
