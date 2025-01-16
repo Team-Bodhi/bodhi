@@ -155,12 +155,16 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id).select('-__v');
+    const objectId = new mongoose.Types.ObjectId(req.params.id);
+    const book = await Book.findOne({ _id: objectId }).select('-__v');
     if (!book) {
       return res.status(404).json({ error: 'Book not found' });
     }
     res.json(book);
   } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ error: 'Invalid book ID format' });
+    }
     res.status(500).json({ error: 'Error fetching book' });
   }
 });
@@ -233,7 +237,7 @@ router.put('/:id', async (req, res) => {
     };
 
     const book = await Book.findByIdAndUpdate(
-      req.params.id,
+      new mongoose.Types.ObjectId(req.params.id),
       updates,
       {
         new: true,
@@ -282,7 +286,9 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
-    const book = await Book.findByIdAndDelete(req.params.id);
+    const book = await Book.findByIdAndDelete(
+      new mongoose.Types.ObjectId(req.params.id)
+    );
     if (!book) {
       return res.status(404).json({ error: 'Book not found' });
     }
