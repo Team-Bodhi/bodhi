@@ -38,12 +38,7 @@ router.get('/', (req, res) => {
     </head>
     <body>
         <h1>Welcome to Bodhi Bookstore Management System API</h1>
-        <p>This is the API server for the Bodhi Bookstore Management System. The API provides endpoints for managing books, inventory, orders, and sales records.</p>
-        <h2>Available Endpoints:</h2>
-        <ul>
-            <li><code>/api/books</code> - Book management endpoints</li>
-            <li><code>/health</code> - Server health check</li>
-        </ul>
+        <p>This is the API server for the Bodhi Bookstore Management System.</p>
         <p>For detailed API documentation and testing interface, visit:</p>
         <a href="/api-docs" class="api-link">API Documentation</a>
     </body>
