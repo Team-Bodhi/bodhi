@@ -122,7 +122,7 @@ def fetch_orders(supplier_name=None, status=None):
     
 # API Fuctions for user authentication
 
-API_USER_URL = "https://bodhi-23sn.onrender.com/api/users"
+# API_USER_URL = "https://bodhi-23sn.onrender.com/api/users"
 
 # Function for adding a new user
 # def add_user_api(username, password, first_name, last_name, role):
@@ -236,7 +236,7 @@ if page == "Home":
     
 
 # Protected Pages
-if st.session_state.logged_in:
+# if st.session_state.logged_in:
     
     # Inventory Management Page
     if page == "Inventory Management":
