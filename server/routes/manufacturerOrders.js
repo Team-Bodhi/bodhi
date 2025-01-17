@@ -19,9 +19,6 @@ const mongoose = require('mongoose');
  *         - createdAt
  *         - updatedAt
  *       properties:
- *         _id:
- *           type: string
- *           description: Auto-generated MongoDB ID
  *         orderNumber:
  *           type: string
  *           description: Order number (will this be an input or auto)
@@ -93,8 +90,9 @@ const mfrOrderSchema = new mongoose.Schema({
   booksOrdered: [ bookOrderedSchema ],
   status: {
     type: String,
-    enum: ['pending', 'shipped', 'received'],
-    default: 'pending'
+    default: 'pending',
+    required: true,
+    enum: ['pending', 'shipped', 'received', 'canceled']
   },
   totalCost: {
     type: Number,
@@ -179,5 +177,92 @@ router.get('/', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/manufacturerOrders:
+ *   post:
+ *     summary: Create a new order
+ *     tags: 
+ *       - Manufacturer Orders
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MfrOrder'
+ *     responses:
+ *       201:
+ *         description: Order created successfully
+ *       400:
+ *         description: Invalid input or order already exists
+ */
+
+router.post('/', async (req, res) => {
+  try{ 
+    const order = new MfrOrder(req.body);
+    const savedOrder = await order.save();
+    res.status(201).json(savedOrder);
+  } catch {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+    res.status(400).json({ error: 'Error creating user', details: error.message });
+  }
+})
+
+/**
+ * @swagger
+ * /api/manufacturerOrders/{id}:
+ *   put:
+ *     summary: Update an order
+ *     tags: 
+ *       - Manufacturer Orders
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Book ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MfrOrder'
+ *     responses:
+ *       200:
+ *         description: Order updated successfully
+ *       404:
+ *         description: Order not found
+ */
+router.put('/:id', async (req, res) => {
+  try {
+    const updates = {
+      ...req.body,
+      updatedAt: Date.now()
+    };
+
+    const order = await MfrOrder.findByIdAndUpdate(
+      new mongoose.Types.ObjectId(req.params.id),
+      updates,
+      {
+        new: true,
+        runValidators: true
+      }
+    ).select('-__v');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    res.json(order);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'Order number already exists' });
+    }
+    res.status(400).json({ error: 'Order updating book', details: error.message });
+  }
+});
 
 module.exports = router;
