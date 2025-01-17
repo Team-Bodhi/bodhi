@@ -34,6 +34,14 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// MongoDB connection
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/Bodhi';
+mongoose.connect(MONGODB_URI, {
+  dbName: 'Bodhi'
+})
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
 // Middleware
 app.use(cors());
 app.use(morgan('dev'));
@@ -42,9 +50,13 @@ app.use(express.json());
 // Routes
 const indexRoute = require('./routes/index');
 const bookRoutes = require('./routes/books.js');
+const customerRoutes = require('./routes/customers');
+const userRoutes = require('./routes/users.js');
 
 app.use('/', indexRoute);
 app.use('/api/books', bookRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/users', userRoutes);
 
 // TODO
 // Customer order routes
@@ -53,8 +65,8 @@ app.use('/api/books', bookRoutes);
 
 // TODO
 // Manufacturer order routes
-// const manufacturerOrderRoutes = require('./routes/manufacturerOrders');
-// app.use('/api/manufacturer-orders', manufacturerOrderRoutes);
+const manufacturerOrderRoutes = require('./routes/manufacturerOrders');
+app.use('/api/manufacturerOrders', manufacturerOrderRoutes);
 
 // Basic health check route
 app.get('/health', (req, res) => {

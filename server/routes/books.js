@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const Book = require('../models/book');
 
 /**
  * @swagger
@@ -22,7 +23,7 @@ const mongoose = require('mongoose');
  *         - price
  *       properties:
  *         _id:
- *           type: string
+ *           type: object
  *           description: Auto-generated MongoDB ID
  *         title:
  *           type: string
@@ -72,94 +73,13 @@ const mongoose = require('mongoose');
  *           format: date-time
  */
 
-// Book Schema
-const bookSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  author: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  genre: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  isbn: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true
-  },
-  summary: {
-    type: String,
-    required: true
-  },
-  publisher: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  publicationDate: {
-    type: Date,
-    required: true
-  },
-  pageCount: {
-    type: Number,
-    required: true,
-    min: 1
-  },
-  language: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  coverImageUrl: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  quantity: {
-    type: Number,
-    required: true,
-    min: 0,
-    default: 0
-  },
-  price: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  lowStockThreshold: {
-    type: Number,
-    required: true,
-    min: 1,
-    default: 5
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
-// Add index for common queries
-bookSchema.index({ title: 1, author: 1 });
-
-const Book = mongoose.model('Book', bookSchema);
-
 /**
  * @swagger
  * /api/books:
  *   get:
  *     summary: Returns a list of books
+ *     tags: 
+ *       - Book Inventory
  *     parameters:
  *       - in: query
  *         name: genre
@@ -214,6 +134,8 @@ router.get('/', async (req, res) => {
  * /api/books/{id}:
  *   get:
  *     summary: Get a book by id
+ *     tags: 
+ *       - Book Inventory
  *     parameters:
  *       - in: path
  *         name: id
@@ -233,12 +155,16 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id).select('-__v');
+    const objectId = new mongoose.Types.ObjectId(req.params.id);
+    const book = await Book.findOne({ _id: objectId }).select('-__v');
     if (!book) {
       return res.status(404).json({ error: 'Book not found' });
     }
     res.json(book);
   } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ error: 'Invalid book ID format' });
+    }
     res.status(500).json({ error: 'Error fetching book' });
   }
 });
@@ -248,6 +174,8 @@ router.get('/:id', async (req, res) => {
  * /api/books:
  *   post:
  *     summary: Create a new book
+ *     tags: 
+ *       - Book Inventory
  *     requestBody:
  *       required: true
  *       content:
@@ -263,6 +191,8 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const book = new Book(req.body);
+    const id = new mongoose.Types.ObjectId;
+    book._id = id;
     const savedBook = await book.save();
     res.status(201).json(savedBook);
   } catch (error) {
@@ -278,6 +208,8 @@ router.post('/', async (req, res) => {
  * /api/books/{id}:
  *   put:
  *     summary: Update a book
+ *     tags: 
+ *       - Book Inventory
  *     parameters:
  *       - in: path
  *         name: id
@@ -305,7 +237,7 @@ router.put('/:id', async (req, res) => {
     };
 
     const book = await Book.findByIdAndUpdate(
-      req.params.id,
+      new mongoose.Types.ObjectId(req.params.id),
       updates,
       {
         new: true,
@@ -337,6 +269,8 @@ router.put('/:id', async (req, res) => {
  * /api/books/{id}:
  *   delete:
  *     summary: Delete a book
+ *     tags: 
+ *       - Book Inventory
  *     parameters:
  *       - in: path
  *         name: id
@@ -352,7 +286,9 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
-    const book = await Book.findByIdAndDelete(req.params.id);
+    const book = await Book.findByIdAndDelete(
+      new mongoose.Types.ObjectId(req.params.id)
+    );
     if (!book) {
       return res.status(404).json({ error: 'Book not found' });
     }
