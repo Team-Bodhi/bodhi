@@ -11,7 +11,7 @@ const mongoose = require('mongoose');
  *       required:
  *         - orderNumber
  *         - supplierName
- *         - bookOrders
+ *         - booksOrdered
  *         - status
  *         - totalCost
  *         - orderDate
@@ -28,7 +28,7 @@ const mongoose = require('mongoose');
  *         supplierName:
  *           type: string
  *           description: Supplier the order is sent to
- *         bookOrders:
+ *         booksOrdered:
  *           type: array
  *           description: list of books ordered
  *           items:
@@ -164,5 +164,38 @@ router.get('/', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/manufacturerOrders:
+ *   post:
+ *     summary: Create a new mfr order
+ *     tags: 
+ *       - Manufacturer Orders
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MfrOrders'
+ *     responses:
+ *       201:
+ *         description: Mfr order created successfully
+ *       400:
+ *         description: Invalid input or order already exists
+ */
+router.post('/', async (req, res) => {
+  try {
+    const mfrOrder = new MfrOrder(req.body);
+    const id = new mongoose.Types.ObjectId;
+    mfrOrder._id = id;
+    const savedMfrOrder = await mfrOrder.save();
+    res.status(201).json(savedMfrOrder);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'Order already exists' });
+    }
+    res.status(400).json({ error: 'Error creating order', details: error.message });
+  }
+});
 
 module.exports = router;
