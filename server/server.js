@@ -1,10 +1,10 @@
 const express = require('express');
 const cors = require('cors');
-const morgan = require('morgan');
 const mongoose = require('mongoose');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 require('dotenv').config();
+const customLogger = require('./middleware/logger');
 
 const app = express();
 
@@ -44,8 +44,10 @@ mongoose.connect(MONGODB_URI, {
 
 // Middleware
 app.use(cors());
-app.use(morgan('dev'));
 app.use(express.json());
+
+// Add custom logger before routes
+app.use(customLogger());
 
 // Routes
 const indexRoute = require('./routes/index');
@@ -77,8 +79,6 @@ app.get('/health', (req, res) => {
 app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });
 });
-
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
