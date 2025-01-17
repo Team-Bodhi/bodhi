@@ -6,63 +6,162 @@ Created on Thu Jan  9 17:36:27 2025
 """
 #latest changes
 
-import streamlit as st
-import pandas as pd
-from pymongo import MongoClient
-from bson.objectid import ObjectId
 
+import streamlit as st
+import requests
+
+
+API_BOOKS_URL = "https://bodhi-23sn.onrender.com/api/books"
+
+# API helper functions
+
+# function to fetch all books from the books endpoint
+def fetch_books(genre=None, language=None, in_stock=None):
+    params = {}
+    if genre:
+        params['genre'] = genre
+    if language:
+        params['language'] = language
+    if in_stock is not None:
+        params['inStock'] = in_stock
+
+    response = requests.get(API_BOOKS_URL, params=params)
+    
+    if response.status_code == 200:
+        return response.json()  #
+    else:
+        st.error("Failed to fetch books. Please try again.")
+        return []
+
+# Function to add a new book 
+def add_book(title, author, genre, quantity, price, isbn, summary, publisher, publicationDate, page_count, language, coverImageUrl, lowStockThreshold):
+    new_book = {
+        "title": title,
+        "author": author,
+        "genre": genre,
+        "quantity": quantity,
+        "price": price,
+        "isbn": isbn,
+        "summary": summary,
+        "publisher": publisher,
+        "publicationDate": publicationDate,
+        "pageCount": page_count,
+        "language": language,
+        "coverImageUrl": coverImageUrl,
+        "lowStockThreshold": lowStockThreshold
+    }
+
+    response = requests.post(API_BOOKS_URL, json=new_book)
+    if response.status_code == 201:
+        st.success(f"Book '{title}' added successfully.")
+    else:
+        st.error("Failed to add the book. Please check the input and try again.")
+
+# Function to update an existing book 
+def update_book(book_id, title, author, genre, quantity, price):
+    updated_book = {
+        "title": title,
+        "author": author,
+        "genre": genre,
+        "quantity": quantity,
+        "price": price
+    }
+    response = requests.put(f"{API_BOOKS_URL}/{id}", json=updated_book)
+    if response.status_code == 200:
+        st.success(f"Book '{title}' updated successfully.")
+    else:
+        st.error("Failed to update the book. Please try again.")
+
+# Function to delete a book 
+def delete_book(book_id):
+    response = requests.delete(f"{API_BOOKS_URL}/{id}")
+    if response.status_code == 200:
+        st.success("Book deleted successfully.")
+    else:
+        st.error("Failed to delete the book. Please try again.")
+
+# API functions for manufacturer orders
+# 
+API_MFRORDER_URL = "https://bodhi-23sn.onrender.com/api/manufacturerOrders"
+
+# Function to fetch orders
+def fetch_orders(supplier_name=None, status=None):
+    params = {}
+    if supplier_name:
+         params['supplierName'] = supplier_name
+    if status:
+         params['status'] = status
+        
+    response = requests.get(API_MFRORDER_URL, params=params)
+    if response.status_code == 200:
+        return response.json()  # Returns list of orders as JSON
+    else:
+        st.error("Failed to fetch orders. Please try again.")
+        return []
+
+# Function for creating orders (future POST endpoint)
+# FIXME uncomment once POST is available
+# def create_order(order_number, supplier_name, book_orders, status, total_cost, order_date, expected_delivery_date):
+#     new_order = {
+#         "orderNumber": order_number,
+#         "supplierName": supplier_name,
+#         "bookOrders": book_orders,
+#         "status": status,
+#         "totalCost": total_cost,
+#         "orderDate": order_date,
+#         "expectedDeliveryDate": expected_delivery_date,
+#     }
+    
+    #FIXME uncomment when POST is available
+    # response = requests.post(API_MFRORDER_URL, json=new_order)
+    # if response.status_code == 201:
+    #     st.success(f"Order '{order_number}' created successfully.")
+    # else:
+    #     st.error("Failed to create the order. Please try again.")
+ 
+    
+# API Fuctions for user authentication
+
+API_USER_URL = "https://bodhi-23sn.onrender.com/api/users"
+
+# Function for adding a new user
+def add_user_api(username, password, first_name, last_name, role):
+    new_user = {
+        "username": username,
+        "password": password,
+        "firstName": first_name,
+        "lastName": last_name,
+        "role": role
+    }
+    response = requests.post(f"{API_USER_URL}", json=new_user)
+    if response.status_code == 201:
+        return "Account created successfully! You can now log in."
+    elif response.status_code == 400:
+        return "Username already exists. Please choose a different one."
+    else:
+        return "Failed to create account. Please try again."
+
+# Function to validate login
+def validate_login_api(username, password):
+    credentials = {
+        "username": username,
+        "password": password
+    }
+    response = requests.post(f"{API_USER_URL}/login", json=credentials)
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("success"):
+            return data.get("role")  # Return role if login is successful
+    return None
+
+
+
+# Streamlit UI components
 # Set page configuration (must be the first Streamlit command)
 st.set_page_config(page_title="Bodhi Books Management System", layout="wide")
 
 
-# Database connection function
-@st.cache_resource
-def get_database():
-    client = MongoClient("mongodb+srv://kay:jcFfMbK0I7EkjPoA@bodhi.unctm.mongodb.net/?retryWrites=true&w=majority&appName=Bodhi")
-    db = client["Bodhi"]
-    return db
-
-# Access the inventory collection
-db = get_database()
-inventory_collection = db["books"]
-
-# Fetch data from MongoDB
-def fetch_inventory():
-    inventory = list(inventory_collection.find({}, {"_id": 1, "title": 1, "author": 1, "genre": 1, "quantity_in_stock": 1, "price": 1}))
-    return inventory
-
-if 'inventory_df' not in st.session_state:
-    st.session_state.inventory_df = pd.DataFrame(fetch_inventory())
-    st.session_state.inventory_df["_id"] = st.session_state.inventory_df["_id"].astype(str)
-
-# Add, Update, and Delete functions interacting with MongoDB
-def add_book(title, author, genre, quantity, price):
-    new_entry = {
-        "title": title,
-        "author": author,
-        "genre": genre,
-        "quantity_in_stock": quantity,
-        "price": price
-    }
-    inventory_collection.insert_one(new_entry)
-    st.session_state.inventory_df = pd.DataFrame(fetch_inventory())
-    st.session_state.inventory_df["_id"] = st.session_state.inventory_df["_id"].astype(str)
-
-def update_book(book_id, title, author, genre, quantity, price):
-    inventory_collection.update_one(
-        {"_id": ObjectId(book_id)},
-        {"$set": {"title": title, "author": author, "genre": genre, "quantity": quantity, "price": price}}
-    )
-    st.session_state.inventory_df = pd.DataFrame(fetch_inventory())
-    st.session_state.inventory_df["_id"] = st.session_state.inventory_df["_id"].astype(str)
-
-def delete_book(book_id):
-    inventory_collection.delete_one({"_id": ObjectId(book_id)})
-    st.session_state.inventory_df = pd.DataFrame(fetch_inventory())
-    st.session_state.inventory_df["_id"] = st.session_state.inventory_df["_id"].astype(str)
-
-
-# Sidebar Navigation with visible options and icons
+# Sidebar Navigation
 st.sidebar.header("Navigation")
 page = st.sidebar.radio(
     "Go to",
@@ -92,6 +191,34 @@ if st.session_state.logged_in:
         st.session_state.role = ""
         st.session_state['refresh'] = not st.session_state.get('refresh', False)
 
+# Login Section
+if not st.session_state.logged_in:
+    st.subheader("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    
+    if st.button("Login"):
+        role = validate_login_api(username, password)
+        if role:
+            st.session_state.logged_in = True
+            st.session_state.username = username
+            st.session_state.role = role
+            st.success(f"Welcome, {username}! You are logged in as a {role}.")
+        else:
+            st.error("Invalid username or password. Please try again.")
+
+# Create Account Section
+with st.expander("Create a New Account"):
+    new_username = st.text_input("New Username")
+    new_password = st.text_input("New Password", type="password")
+    first_name = st.text_input("First Name")
+    last_name = st.text_input("Last Name")
+    role = st.selectbox("Role", ["Manager", "Clerk", "Admin"])
+    
+    if st.button("Create Account"):
+        response = add_user_api(new_username, new_password, first_name, last_name, role)
+        st.info(response)
+
 # Home Page (Always Accessible)
 if page == "Home":
     st.title("📚 Bodhi Books Management System")
@@ -107,23 +234,6 @@ if page == "Home":
     Use the sidebar to navigate through the different sections of the app.
     """)
     
-    # Login Section on Home Page
-if not st.session_state.logged_in:
-        st.info("📝 Ready to get started? Log in to begin managing the world of rare books.")
-        st.subheader("Login")
-        name = st.text_input("Name")
-        password = st.text_input("Password", type="password")
-        role = st.selectbox("Role", ["Manager", "Clerk", "Admin"])
-        
-        if st.button("Login"):
-            if password == "TEST":
-                st.session_state.logged_in = True
-                st.session_state.name = name
-                st.session_state.role = role
-                st.success(f"Welcome, {name}! You are logged in as a {role}.")
-                st.session_state['refresh'] = not st.session_state.get('refresh', False)
-            else:
-                st.error("Invalid password. Please try again.")
 
 # Protected Pages
 if st.session_state.logged_in:
@@ -141,16 +251,53 @@ if st.session_state.logged_in:
         """)
         
 
-         # Search Bar
-        search_query = st.text_input(
-            "Search Inventory by Title, Author, or Genre",
-            placeholder="Enter book title, author, or genre",
-            key="search_bar"
-        )
-        st.button("🔍", key="search_button")
+        # Filters for the search
+        # FIXME: see if these text boxes can be side by side with a radio button
+        st.subheader("Filter Inventory")
+        genre_filter = st.text_input("Filter by Genre")
+        language_filter = st.text_input("Filter by Language")
+        in_stock_filter = st.checkbox("Only show books in stock")
 
-        
+        # Fetch and display the books using the API
+        books = fetch_books(genre=genre_filter, language=language_filter, in_stock=in_stock_filter)
+
+        # FIXME: need to have headers for each column and need a table view; there are no lines
+        if books:
+            for book in books:
+                col1, col2, col3, col4, col5, col6 = st.columns([2, 2, 2, 1, 1, 1])
+                col1.write(book.get('title', 'N/A'))
+                col2.write(book.get('author', 'N/A'))
+                col3.write(book.get('genre', 'N/A'))
+                quantity = book.get('quantity', 0)
+                col4.write(f"Stock: {quantity}")
+                # Check for low stock and display a warning if below 20
+                if quantity < 20:
+                    col4.markdown("<span style='color: red;'>Low Stock!</span>", unsafe_allow_html=True)
+                
+                col5.write(f"${book.get('price', 0.0):.2f}")
+                update_button = col6.button("Update", key=f"update_{book['_id']}")
+                delete_button = col6.button("Delete", key=f"delete_{book['_id']}")
+
+                            
+                if update_button:
+                    with st.form(f"update_form_{book['_id']}"):
+                        new_title = st.text_input("Book Title", value=book['title'])
+                        new_author = st.text_input("Author", value=book['author'])
+                        new_genre = st.text_input("Genre", value=book['genre'])
+                        new_quantity = st.number_input("Quantity", min_value=0, value=book['quantity'])
+                        new_price = st.number_input("Price", min_value=0.0, value=book['price'])
+                        update_submitted = st.form_submit_button("Submit Update")
+                        if update_submitted:
+                            update_book(book['_id'], new_title, new_author, new_genre, new_quantity, new_price)
+
+                if delete_button:
+                    delete_book(book['_id'])
+
+        else:
+            st.write("No books found.")
+              
         # Add New Book Button and Form 
+        # FIX- need to move this up, it's at the bottom of the inventory list
         with st.expander("➕ Add New Book"):
             with st.form("add_book_form", clear_on_submit=True):
                 new_title = st.text_input("Book Title")
@@ -158,50 +305,21 @@ if st.session_state.logged_in:
                 new_genre = st.selectbox("Genre", ["Fiction", "Non-Fiction", "Science", "Biography"])
                 new_quantity = st.number_input("Quantity", min_value=1, value=1)
                 new_price = st.number_input("Price", min_value=0.0, value=1.0)
+                new_isbn = st.text_input("ISBN")
+                new_summary = st.text_area("Summary")
+                new_publisher = st.text_input("Publisher")
+                new_publication_date = st.date_input("Publication Date")
+                new_page_count = st.number_input("Page Count", min_value=1, value=1)
+                new_language = st.text_input("Language")
+                new_cover_image_url = st.text_input("Cover Image URL")
+                new_low_stock_threshold = st.number_input("Low Stock Threshold", min_value=1, value=5)
+                
                 add_submitted = st.form_submit_button("Add Book")
                 if add_submitted:
-                    add_book(new_title, new_author, new_genre, new_quantity, new_price)
-                    st.success(f"Book '{new_title}' added successfully.")
-                    st.session_state['refresh'] = not st.session_state.get('refresh', False)
-
+                    add_book(new_title, new_author, new_genre, new_quantity, new_price, new_isbn, new_summary, new_publisher, new_publication_date, new_page_count, new_language, new_cover_image_url, new_low_stock_threshold)
+                  
         
-        # Filtered Inventory Display with Error Handling for Missing Fields
-        filtered_inventory = st.session_state.inventory_df
-        if search_query:
-            filtered_inventory = filtered_inventory[filtered_inventory.apply(
-                lambda row: search_query.lower() in str(row['title']).lower()
-                or search_query.lower() in str(row['author']).lower()
-                or search_query.lower() in str(row['genre']).lower(), axis=1)]
-
-        # Display Inventory with Update and Delete Options
-        for index, row in filtered_inventory.iterrows():
-            col1, col2, col3, col4, col5, col6 = st.columns([2, 2, 2, 1, 1, 1])
-            col1.write(row.get('title', 'N/A'))
-            col2.write(row.get('author', 'N/A'))
-            col3.write(row.get('genre', 'N/A'))
-            col4.write(row.get('quantity_in_stock', 'N/A'))
-            col5.write(f"${row.get('price', 0.0):.2f}")
-            update_button = col6.button("Update", key=f"update_{row['_id']}")
-            delete_button = col6.button("Delete", key=f"delete_{row['_id']}")
-
-            if update_button:
-                with st.form(f"update_form_{row['_id']}"):
-                    new_title = st.text_input("Book Title", value=row['title'])
-                    new_author = st.text_input("Author", value=row['author'])
-                    new_genre = st.text_input("Genre", value=row['genre'])
-                    new_quantity = st.number_input("Quantity", min_value=0, value=row['quantity'])
-                    new_price = st.number_input("Price", min_value=0.0, value=row['price'])
-                    update_submitted = st.form_submit_button("Submit Update")
-                    if update_submitted:
-                        update_book(row['_id'], new_title, new_author, new_genre, new_quantity, new_price)
-                        st.success(f"Book '{new_title}' updated successfully.")
-                        st.session_state['refresh'] = not st.session_state.get('refresh', False)
-
-            if delete_button:
-                delete_book(row['_id'])
-                st.success(f"Book '{row['title']}' deleted successfully.")
-                st.session_state['refresh'] = not st.session_state.get('refresh', False)
-
+              
         
     # Sales Records Page
     elif page == "Sales Records":
@@ -226,15 +344,17 @@ if st.session_state.logged_in:
         """)
 
         # Section: Create Purchase Order Form
+        # order submission goes nowhere until we have an API endpoint for saving orders
         st.subheader("Create Purchase Order")
         with st.form("purchase_order_form"):
-            book_title = st.selectbox("Select Book", st.session_state.inventory_df['title'].tolist())
-            current_stock = st.session_state.inventory_df[st.session_state.inventory_df['title'] == book_title]['quantity'].values[0]
-            st.write(f"Current Stock: {current_stock}")
+            book_title = st.selectbox("Select Book", [book['title'] for book in fetch_books()])
             quantity_to_order = st.number_input("Quantity to Order", min_value=1, value=1)
             submitted = st.form_submit_button("Save Purchase Order")
             if submitted:
-                st.success(f"Purchase order for {quantity_to_order} units of '{book_title}' created successfully.")
+                st.info(f"Order functionality is not yet connected to the backend. Order for {quantity_to_order} units of '{book_title}' was simulated.")
+                # FIXME uncomment when endpoint is ready
+                #selected_book = next(book for book in fetch_books() if book['title'] == book_title)
+                #submit_order(selected_book['_id'], quantity_to_order)
 
         # Section: View Existing Purchase Orders
         st.subheader("Existing Purchase Orders")
