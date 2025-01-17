@@ -125,34 +125,34 @@ def fetch_orders(supplier_name=None, status=None):
 API_USER_URL = "https://bodhi-23sn.onrender.com/api/users"
 
 # Function for adding a new user
-def add_user_api(username, password, first_name, last_name, role):
-    new_user = {
-        "username": username,
-        "password": password,
-        "firstName": first_name,
-        "lastName": last_name,
-        "role": role
-    }
-    response = requests.post(f"{API_USER_URL}", json=new_user)
-    if response.status_code == 201:
-        return "Account created successfully! You can now log in."
-    elif response.status_code == 400:
-        return "Username already exists. Please choose a different one."
-    else:
-        return "Failed to create account. Please try again."
+# def add_user_api(username, password, first_name, last_name, role):
+#     new_user = {
+#         "username": username,
+#         "password": password,
+#         "firstName": first_name,
+#         "lastName": last_name,
+#         "role": role
+#     }
+#     response = requests.post(f"{API_USER_URL}", json=new_user)
+#     if response.status_code == 201:
+#         return "Account created successfully! You can now log in."
+#     elif response.status_code == 400:
+#         return "Username already exists. Please choose a different one."
+#     else:
+#         return "Failed to create account. Please try again."
 
-# Function to validate login
-def validate_login_api(username, password):
-    credentials = {
-        "username": username,
-        "password": password
-    }
-    response = requests.post(f"{API_USER_URL}/login", json=credentials)
-    if response.status_code == 200:
-        data = response.json()
-        if data.get("success"):
-            return data.get("role")  # Return role if login is successful
-    return None
+# # Function to validate login
+# def validate_login_api(username, password):
+#     credentials = {
+#         "username": username,
+#         "password": password
+#     }
+#     response = requests.post(f"{API_USER_URL}", json=credentials)
+#     if response.status_code == 200:
+#         data = response.json()
+#         if data.get("success"):
+#             return data.get("role")  # Return role if login is successful
+#     return None
 
 
 
@@ -174,50 +174,50 @@ page = st.sidebar.radio(
 )
 
 # Login State Management
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
+# if 'logged_in' not in st.session_state:
+#     st.session_state.logged_in = False
 
-if 'name' not in st.session_state:
-    st.session_state.name = ""
+# if 'name' not in st.session_state:
+#     st.session_state.name = ""
 
-if 'role' not in st.session_state:
-    st.session_state.role = ""
+# if 'role' not in st.session_state:
+#     st.session_state.role = ""
 
-# Logout Functionality
-if st.session_state.logged_in:
-    if st.sidebar.button("Logout"):
-        st.session_state.logged_in = False
-        st.session_state.name = ""
-        st.session_state.role = ""
-        st.session_state['refresh'] = not st.session_state.get('refresh', False)
+# # Logout Functionality
+# if st.session_state.logged_in:
+#     if st.sidebar.button("Logout"):
+#         st.session_state.logged_in = False
+#         st.session_state.name = ""
+#         st.session_state.role = ""
+#         st.session_state['refresh'] = not st.session_state.get('refresh', False)
 
-# Login Section
-if not st.session_state.logged_in:
-    st.subheader("Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+# # Login Section
+# if not st.session_state.logged_in:
+#     st.subheader("Login")
+#     username = st.text_input("Username")
+#     password = st.text_input("Password", type="password")
     
-    if st.button("Login"):
-        role = validate_login_api(username, password)
-        if role:
-            st.session_state.logged_in = True
-            st.session_state.username = username
-            st.session_state.role = role
-            st.success(f"Welcome, {username}! You are logged in as a {role}.")
-        else:
-            st.error("Invalid username or password. Please try again.")
+#     if st.button("Login"):
+#         role = validate_login_api(username, password)
+#         if role:
+#             st.session_state.logged_in = True
+#             st.session_state.username = username
+#             st.session_state.role = role
+#             st.success(f"Welcome, {username}! You are logged in as a {role}.")
+#         else:
+#             st.error("Invalid username or password. Please try again.")
 
-# Create Account Section
-with st.expander("Create a New Account"):
-    new_username = st.text_input("New Username")
-    new_password = st.text_input("New Password", type="password")
-    first_name = st.text_input("First Name")
-    last_name = st.text_input("Last Name")
-    role = st.selectbox("Role", ["Manager", "Clerk", "Admin"])
+# # Create Account Section
+# with st.expander("Create a New Account"):
+#     new_username = st.text_input("New Username")
+#     new_password = st.text_input("New Password", type="password")
+#     first_name = st.text_input("First Name")
+#     last_name = st.text_input("Last Name")
+#     role = st.selectbox("Role", ["Manager", "Clerk", "Admin"])
     
-    if st.button("Create Account"):
-        response = add_user_api(new_username, new_password, first_name, last_name, role)
-        st.info(response)
+#     if st.button("Create Account"):
+#         response = add_user_api(new_username, new_password, first_name, last_name, role)
+#         st.info(response)
 
 # Home Page (Always Accessible)
 if page == "Home":
