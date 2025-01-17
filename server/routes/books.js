@@ -22,9 +22,6 @@ const Book = require('../models/book');
  *         - coverImageUrl
  *         - price
  *       properties:
- *         _id:
- *           type: object
- *           description: Auto-generated MongoDB ID
  *         title:
  *           type: string
  *           description: Book title
@@ -181,7 +178,30 @@ router.get('/:id', async (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Book'
+ *             type: object
+ *             required:
+ *               - title
+ *               - author
+ *               - genre
+ *               - isbn
+ *               - quantity
+ *               - price
+ *               - language
+ *             properties:
+ *               title:
+ *                 type: string
+ *               author:
+ *                 type: string
+  *               genre:
+ *                 type: string
+ *               isbn:
+ *                 type: string
+ *               quantity:
+ *                 type: number
+ *               price:
+ *                 type: number
+ *               language:
+ *                 type: string
  *     responses:
  *       201:
  *         description: Book created successfully
@@ -190,9 +210,20 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const book = new Book(req.body);
+    const { title, author, genre, isbn, quantity, price, language } = req.body;
     const id = new mongoose.Types.ObjectId;
+    
+    const book = new Book();
+    
     book._id = id;
+    book.title = title;
+    book.author = author;
+    book.genre = genre;
+    book.isbn = isbn;
+    book.quantity = quantity;
+    book.price = price;
+    book.language = language;
+
     const savedBook = await book.save();
     res.status(201).json(savedBook);
   } catch (error) {
