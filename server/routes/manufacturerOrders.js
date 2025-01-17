@@ -11,7 +11,7 @@ const mongoose = require('mongoose');
  *       required:
  *         - orderNumber
  *         - supplierName
- *         - bookOrders
+ *         - booksOrdered
  *         - status
  *         - totalCost
  *         - orderDate
@@ -28,7 +28,7 @@ const mongoose = require('mongoose');
  *         supplierName:
  *           type: string
  *           description: Supplier the order is sent to
- *         bookOrders:
+ *         booksOrdered:
  *           type: array
  *           description: list of books ordered
  *           items:
@@ -64,6 +64,20 @@ const mongoose = require('mongoose');
  *           description: Any updates to the order will change this value
  */
 
+// book subschema
+const bookOrderedSchema = new mongoose.Schema({
+  bookId: {
+    type: mongoose.Types.ObjectId,
+    ref: 'books', 
+    required: true,
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+  },
+});
+
 // Mfr Order Schema
 const mfrOrderSchema = new mongoose.Schema({
   orderNumber: {
@@ -76,19 +90,11 @@ const mfrOrderSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  booksOrdered: [{
-    bookId: {
-      type: String,
-      required: true
-    },
-    quantity: {
-      type: Number,
-      min: 0 
-    }  
-  }],
+  booksOrdered: [ bookOrderedSchema ],
   status: {
     type: String,
-    required: true
+    enum: ['pending', 'shipped', 'received'],
+    default: 'pending'
   },
   totalCost: {
     type: Number,
@@ -109,10 +115,13 @@ const mfrOrderSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  }
-});
+  },
+},
+{
+  timestamps: true
+}
+);
 
-mfrOrderSchema.index({ orderNumber: 1 });
 const MfrOrder = mongoose.model('MfrOrder', mfrOrderSchema);
 
 /**
@@ -123,16 +132,21 @@ const MfrOrder = mongoose.model('MfrOrder', mfrOrderSchema);
  *     tags:
  *       - Manufacturer Orders
  *     parameters:
- *       - in: query
+ *       - in: path
  *         name: supplierName
  *         schema:
  *           type: string
- *         description: Filter by supplier
- *       - in: query
+ *         description: Supplier Name
+ *       - in: path
  *         name: status
  *         schema:
  *           type: string
- *         description: Filter by status
+ *         description: Order Status
+ *       - in: path
+ *         name: orderDate
+ *         schema:
+ *           type: string
+ *         description: Order date 
  *     responses:
  *       200:
  *         description: List of vendor orders
@@ -141,15 +155,16 @@ const MfrOrder = mongoose.model('MfrOrder', mfrOrderSchema);
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/MfrOrders'
+ *                 $ref: '#/components/schemas/MfrOrder'
  */
 router.get('/', async (req, res) => {
   try {
-    const { supplierName, status } = req.query;
+    const { supplierName, status, orderDate } = req.query;
     let query = {};
 
     if (supplierName) query.supplierName = supplierName;
     if (status) query.status = status;
+    if (orderDate) query.orderDate = orderDate;
 
     console.log('Collection name:', MfrOrder.collection.name);
     console.log('Database name:', mongoose.connection.db.databaseName);
