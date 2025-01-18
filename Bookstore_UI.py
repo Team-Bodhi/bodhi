@@ -4,23 +4,38 @@ Created on Thu Jan  9 17:36:27 2025
 
 @author: kaymo
 """
-
+# FIXME in this version: updates to books not happening, need to check api. error after login and user creation.
+ 
+# Passed- all filters, adding a book, deleting a book. login, create user.
 
 import streamlit as st
 import requests
+from dotenv import load_dotenv
+import os
 
-# Bugs in this version: updates to books not happening, need to check api. error after login and user creation.
-    
-# Passed- all filters, adding a book, deleting a book. login, create user.
-    
-    
-API_BOOKS_URL = "https://bodhi-23sn.onrender.com/api/books"
+# For local environment testing
+# Load environment variables from .env file
+load_dotenv()
 
-# API helper functions
+API_BASE_URL = os.getenv("API_BASE_URL")
+if not API_BASE_URL:
+    raise ValueError("API_BASE_URL is not set. Please configure it in the .env file.")
 
-# function to fetch all books from the books endpoint
-# PASSED TESTING
-# function to fetch all books from the books endpoint
+
+# For streamlit cloud deployment uncomment this sesction, comment out local section
+#API_BASE_URL = st.secrets["api"]["user_url"]
+# if not API_BASE_URL:
+#     raise ValueError("API_BASE_URL i snot set in Streamlit secrets.")
+
+API_BOOKS_URL = API_BOOKS_URL = f"{API_BASE_URL}/books"
+API_USER_URL = f"{API_BASE_URL}/users"
+API_MFRORDER_URL = f"{API_BASE_URL}/manufacturerOrders"
+
+
+# Define all functions
+
+# function to fetch all books- Passed testing
+
 def fetch_books(genre=None, title=None, author=None):
     params = {}
     if genre:
@@ -40,7 +55,7 @@ def fetch_books(genre=None, title=None, author=None):
         return []
 
 
-# tested and works
+# Function to add a book- Passed testing
 def add_book(title, author, genre, quantity, price, language, isbn):
     new_book = {
         "title": title,
@@ -55,10 +70,6 @@ def add_book(title, author, genre, quantity, price, language, isbn):
 
     # Send the data to the API
     response = requests.post(API_BOOKS_URL, json=new_book)
-    # Debugging: Inspect the request payload and response
-    # st.write("Add Book Payload:", new_book)
-    # st.write("API Response Status Code:", response.status_code)
-    # st.write("API Response Body:", response.json())
     
     # Handle the response
     if response.status_code == 201:
@@ -67,8 +78,7 @@ def add_book(title, author, genre, quantity, price, language, isbn):
         st.error(f"Failed to add book: {response.text}")
         
 # Function to update an existing book 
-# FIXME test update
-def update_book(book_id, title, author, genre, quantity, price):
+def update_book(book_id, title, author, genre, quantity, price, language=None, isbn=None):
     updated_book = {
         "title": title,
         "author": author,
@@ -76,19 +86,22 @@ def update_book(book_id, title, author, genre, quantity, price):
         "quantity": quantity,
         "price": price,
     }
-    
-    # Debug log
-    st.write("Payload sent to API:", updated_book)
-    
+    # Optionally include additional fields if provided
+    if language:
+        updated_book["language"] = language
+    if isbn:
+        updated_book["isbn"] = isbn
+        
     response = requests.put(f"{API_BOOKS_URL}/{book_id}", json=updated_book)
     if response.status_code == 200:
-        st.success(f"Book '{title}' updated successfully.")
+        st.success(f"Book '{title}' updated successfully!")
+        return True
     else:
-        st.error(f"Failed to update the book. Error: {response.text}")
-        st.write("Debug Response:", response.json())
-
+        st.error(f"Failed to update book: {response.text}")
+        return False
+ 
+    
 # Function to delete a book
-# FIXME test update
 def delete_book(book_id):
     response = requests.delete(f"{API_BOOKS_URL}/{book_id}")
     if response.status_code == 200:
@@ -96,11 +109,8 @@ def delete_book(book_id):
     else:
         st.error(f"Failed to delete the book: {response.text}")
 
-# API functions for manufacturer orders
-# 
-API_MFRORDER_URL = "https://bodhi-23sn.onrender.com/api/manufacturerOrders"
 
-# Function to fetch orders
+# Function to fetch manufacturer orders
 def fetch_orders(supplier_name=None, status=None):
     params = {}
     if supplier_name:
@@ -138,8 +148,6 @@ def fetch_orders(supplier_name=None, status=None):
     
 # API Fuctions for user authentication
 
-# API_USER_URL = "https://bodhi-23sn.onrender.com/api/users"
-
 # Function for adding a new user
 def add_user_api(username, password, first_name, last_name, role):
     new_user = {
@@ -150,8 +158,7 @@ def add_user_api(username, password, first_name, last_name, role):
         "role": role
     }
     response = requests.post(f"{API_USER_URL}", json=new_user)
-    # FIXME enable for testing
-    #st.write(response.json()) # print response to see exact error
+
     if response.status_code == 201:
         return "User created successfully."
     elif response.status_code == 400:
@@ -259,55 +266,55 @@ if not st.session_state.logged_in:
 
          
             
-# Create account toogles
+# Create account section
+
 # Initialize session state for the expander
-if "show_create_account" not in st.session_state:
-    st.session_state.show_create_account = False  # Expander starts collapsed
-
-# Toggle function for the expander
-def toggle_expander():
-    st.session_state.show_create_account = not st.session_state.show_create_account
-
-# Main "Create a New Account" toggle button
-if not st.session_state.show_create_account:
-    st.button("Create a New Account", on_click=toggle_expander)
+if not st.session_state.logged_in and page == "Home":
+    if "show_create_account" not in st.session_state:
+        st.session_state.show_create_account = False  # Expander starts collapsed
     
-# Initialize session state for role
-if 'role' not in st.session_state or st.session_state.role not in ["staff", "manager"]:
-    st.session_state.role = "staff"  # Default to 'staff'
-
-
-# Only show the expander if "show_create_account" is True
-if st.session_state.show_create_account:
-    with st.expander("Create a New Account", expanded=True):
-        # Input fields for creating a new account
-        new_username = st.text_input("New Username", key="new_username")
-        new_password = st.text_input("New Password", type="password", key="new_password")
-        first_name = st.text_input("First Name", key="first_name")
-        last_name = st.text_input("Last Name", key="last_name")
-        role = st.selectbox("Role", ["staff", "manager"], key="role")
-
-        if st.button("Create Account"):
-            if new_username and new_password and first_name and last_name:
-                response = add_user_api(new_username, new_password, first_name, last_name, role)
-                st.info(response)
-
-                # Reset form fields and collapse after success
-                st.session_state.new_username = ""
-                st.session_state.new_password = ""
-                st.session_state.first_name = ""
-                st.session_state.last_name = ""
-                st.session_state.role = "staff"  # Reset to default
-                st.session_state.show_create_account = False
-            else:
-                st.warning("All fields are required to create an account.")
-
-
+    # Toggle function for the expander
+    def toggle_expander():
+        st.session_state.show_create_account = not st.session_state.show_create_account
+    
+    # Main "Create a New Account" toggle button
+    if not st.session_state.show_create_account:
+        st.button("Create a New Account", on_click=toggle_expander)
+        
+    # Initialize session state for role
+    if 'role' not in st.session_state or st.session_state.role not in ["staff", "manager"]:
+        st.session_state.role = "staff"  # Default to 'staff'
+    
+    
+    # Only show the expander if "show_create_account" is True
+    if st.session_state.show_create_account:
+        with st.expander("Create a New Account", expanded=True):
+            # Input fields for creating a new account
+            new_username = st.text_input("New Username", key="new_username")
+            new_password = st.text_input("New Password", type="password", key="new_password")
+            first_name = st.text_input("First Name", key="first_name")
+            last_name = st.text_input("Last Name", key="last_name")
+            role = st.selectbox("Role", ["staff", "manager"], key="role")
+    
+            if st.button("Create Account"):
+                if new_username and new_password and first_name and last_name:
+                    response = add_user_api(new_username, new_password, first_name, last_name, role)
+                    st.info(response)
+    
+                    # Reset form fields and collapse after success
+                    st.session_state.new_username = ""
+                    st.session_state.new_password = ""
+                    st.session_state.first_name = ""
+                    st.session_state.last_name = ""
+                    st.session_state.role = "staff"  # Reset to default
+                    st.session_state.show_create_account = False
+                else:
+                    st.warning("All fields are required to create an account.")
+    
 
         
 # Protected Pages
-# if st.session_state.logged_in:
-    
+if st.session_state.logged_in:
     # Inventory Management Page
     if page == "Inventory Management":
         st.title("📦 Inventory Management")
@@ -319,9 +326,12 @@ if st.session_state.show_create_account:
         - Update book information, including stock levels and prices.
         - Remove books that are no longer available.
         """)
-        
-        # Add New Book Button and Form 
-        # Tested and works
+    
+        # Track the selected book for editing
+        if "selected_book" not in st.session_state:
+            st.session_state.selected_book = None
+            
+        # Add New Book Button and Form
         with st.expander("➕ Add New Book"):
             with st.form("add_book_form", clear_on_submit=True):
                 new_title = st.text_input("Book Title")
@@ -334,121 +344,102 @@ if st.session_state.show_create_account:
                 add_submitted = st.form_submit_button("Add Book")
                 if add_submitted:
                     add_book(new_title, new_author, new_genre, new_quantity, new_price, new_language, new_isbn)
-              
+        
         # Filters for the search
-        # PASSED testing
         st.subheader("Filter Inventory")
         col1, col2, col3 = st.columns(3)
-        
+    
         with col1:
             filter_by_genre = st.checkbox("Filter by Genre")
             selected_genre = st.text_input("Genre") if filter_by_genre else None
-            
-
+    
         with col2:
-           filter_by_author = st.checkbox("Filter by Author")
-           selected_author = st.text_input("Author") if filter_by_author else None
-
+            filter_by_author = st.checkbox("Filter by Author")
+            selected_author = st.text_input("Author") if filter_by_author else None
+    
         with col3:
             filter_by_title = st.checkbox("Filter by Title")
             selected_title = st.text_input("Title") if filter_by_title else None
-
-
-        # UpdateD fetch_books function based on selected filters
+    
+        # Update fetch_books function based on selected filters
         filters = {
             "genre": selected_genre if filter_by_genre else None,
             "author": selected_author if filter_by_author else None,
             "title": selected_title if filter_by_title else None,
-            
-          
         }
-                
+
         # Fetch and display the books using the API
         books = fetch_books(**{k: v for k, v in filters.items() if v is not None})
-
-        # FIXME: Test Update to add headers using markdown
         st.subheader("Inventory List")
-        
-        if books:
-           # Display table headers with HTML styling
-           st.markdown("""
-           <style>
-           table {
-               border-collapse: collapse;
-               width: 100%;
-           }
-                          
-           th, td {
-               border: 1px solid #ddd;
-               padding: 8px;
-           }
-           th {
-               background-color: #f2f2f2;
-               text-align: left;
-           }
-           </style>
-           """, unsafe_allow_html=True)
-    
-           # Display header row using Streamlit columns for interaction
-           col1, col2, col3, col4, col5, col6 = st.columns([2, 2, 2, 1, 1, 2])
-           col1.write("Title")
-           col2.write("Author")
-           col3.write("Genre")
-           col4.write("Stock")
-           col5.write("Price")
-           col6.write("Actions")
-    
-           # Loop through books and create rows dynamically
-           for book in books:
-               col1, col2, col3, col4, col5, col6 = st.columns([2, 2, 2, 1, 1, 2])
-               col1.write(book.get('title', 'N/A'))
-               col2.write(book.get('author', 'N/A'))
-               col3.write(book.get('genre', 'N/A'))
-               
-               quantity = book.get('quantity', 0)
-               # Highlight stock if it's low
-               if quantity < 20:
-                   col4.markdown(f"<span style='color: red;'>{quantity}</span>", unsafe_allow_html=True)
-               else:
-                   col4.write(quantity)
-        
-               col5.write(f"${book.get('price', 0.0):.2f}")
-        
-               # Add buttons for update and delete
-               update_button = col6.button("Update", key=f"update_{book['_id']}")
-               delete_button = col6.button("Delete", key=f"delete_{book['_id']}")
 
-               # Update book logic
-               if update_button:
-                   with st.form(f"update_form_{book['_id']}", clear_on_submit=True):
-                       new_title = st.text_input("Book Title", value=book['title'])
-                       new_author = st.text_input("Author", value=book['author'])
-                       new_genre = st.text_input("Genre", value=book['genre'])
-                       new_quantity = st.number_input("Quantity", min_value=0, value=book['quantity'])
-                       new_price = st.number_input("Price", min_value=0.0, value=book['price'])
-                       update_submitted = st.form_submit_button("Submit Update")
-                       if update_submitted:
-                           
-                           try:
-                               update_book(
-                                   book['_id'],
-                                   new_title,
-                                   new_author,
-                                   new_genre,
-                                   int(new_quantity),
-                                   float(new_price)
-                               )
-                               st.experimental_rerun()
-                           except Exception as e:
-                               st.error(f"An error occurred: {e}")
-        
-               # Delete book logic
-               if delete_button:
-                   delete_book(book['_id'])
-                   st.session_state['refresh'] = not st.session_state.get('refresh', False)  # Trigger a page refresh
-              
-                 
-        
+        if books:
+            # Display table headers with Streamlit columns
+            header_cols = st.columns([2, 2, 2, 1, 1, 2])
+            header_cols[0].write("Title")
+            header_cols[1].write("Author")
+            header_cols[2].write("Genre")
+            header_cols[3].write("Stock")
+            header_cols[4].write("Price")
+            header_cols[5].write("Actions")
+
+
+            # Display inventory with "Edit" and "Delete" actions
+            for book in books:
+                cols = st.columns([2, 2, 2, 1, 1, 2])
+                cols[0].write(book.get("title", "N/A"))
+                cols[1].write(book.get("author", "N/A"))
+                cols[2].write(book.get("genre", "N/A"))
+    
+                quantity = book.get("quantity", 0)
+                # Highlight stock if it's low
+                if quantity < 20:
+                    cols[3].markdown(f"<span style='color: red;'>{quantity}</span>", unsafe_allow_html=True)
+                else:
+                    cols[3].write(quantity)
+    
+                cols[4].write(f"${book.get('price', 0):.2f}")
+    
+                # Add "Edit" and "Delete" buttons
+                if cols[5].button("Edit", key=f"edit_{book['_id']}"):
+                    st.session_state.selected_book = book
+    
+                if cols[5].button("Delete", key=f"delete_{book['_id']}"):
+                    delete_book(book["_id"])
+                    st.success(f"Book '{book['title']}' deleted successfully.")
+                    st.query.params(refresh="true")
+
+        # Centralized Update Form for Editing a Book
+        if st.session_state.selected_book:
+            st.subheader("Edit Book")
+            book = st.session_state.selected_book
+            with st.form("update_book_form", clear_on_submit=True):
+                new_title = st.text_input("Book Title", value=book["title"])
+                new_author = st.text_input("Author", value=book["author"])
+                new_genre = st.text_input("Genre", value=book["genre"])
+                new_quantity = st.number_input("Quantity", min_value=0, value=book["quantity"])
+                new_price = st.number_input("Price", min_value=0.0, value=book["price"])
+                new_language = st.text_input("Language", value=book.get("language", ""))
+                new_isbn = st.text_input("ISBN", value=book.get("isbn", ""))
+    
+                update_submitted = st.form_submit_button("Update Book")
+                if update_submitted:
+                    success = update_book(
+                        book["_id"],
+                        new_title,
+                        new_author,
+                        new_genre,
+                        int(new_quantity),
+                        float(new_price),
+                        new_language,
+                        new_isbn,
+                    )
+                    if success:
+                        # Clear the selected book and refresh the books
+                        st.session_state.selected_book = None
+                        # Force page refresh
+                        st.query.params(refresh="true")  
+    
+         
     # Sales Records Page
     elif page == "Sales Records":
         st.title("📊 Sales Records")
