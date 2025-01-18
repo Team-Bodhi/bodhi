@@ -193,7 +193,52 @@ router.put('/:id', async (req, res) => {
     ).select('-__v');
 
     if (!order) {
-      return res.status(404).json({ error: 'Book not found' });
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    res.json(order);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'Order number already exists' });
+    }
+    res.status(400).json({ error: 'Error updating order', details: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/manufacturerOrders/cancel/{id}:
+ *   put:
+ *     summary: Update an order
+ *     tags: 
+ *       - Manufacturer Orders
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order ID
+ *     responses:
+ *       200:
+ *         description: Order updated successfully
+ *       404:
+ *         description: Order not found
+ */
+router.put('/cancel/:id', async (req, res) => {
+  try {
+    const update = { status: 'canceled', updatedAt: Date.now() }
+    const order = await MfrOrder.findByIdAndUpdate(
+      new mongoose.Types.ObjectId(req.params.id),
+      update,
+      {
+        new: true,
+        runValidators: true
+      }
+    ).select('-__v');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
     }
 
     res.json(order);
