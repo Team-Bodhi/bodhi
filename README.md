@@ -13,7 +13,7 @@ The Bodhi Bookstore Management System is designed to streamline bookstore operat
   - Add, update, and delete books in the inventory.
   - Highlight low-stock items (stock level below 20) for easy restocking.
 
-- **Order Management**:
+- **Order Management**: still in progress
   - Create purchase orders for books running low on stock.
   - View existing purchase orders (coming soon with API integration).
 
@@ -21,13 +21,39 @@ The Bodhi Bookstore Management System is designed to streamline bookstore operat
   - Secure login and account creation using API endpoints.
   - Supports role-based access for "Manager," "Clerk," and "Admin."
 
-- **Sales Records**:
+- **Sales Records**: still in progress
   - View and analyze sales data (feature in progress).
 
 📌 **Future Enhancements**
 Full integration of the purchase order system with the backend API.
 Detailed sales reporting and analytics.
 
-**Accessing the App**
-You can access the Bodhi Books Management System directly via the following link:
-https://bodhibooks.streamlit.app/
+  **Local Setup**: (assumes you already cloned the repo)
+  
+- **Installation Requirements**:
+  - Python Version: 3.12.8 
+  - Streamlit Version: 1.41.1 
+  - IDE (Optional): Spyder
+
+- **Environment setup**:
+  - Create a Virtual Environment: Using conda ([recommended](https://docs.conda.io/en/latest/)): 
+  - conda create --name bodhi_books python=3.12.8
+  - conda activate bodhi_books
+
+- **Install dependencies**: (if using conda follow below)
+  - conda install -r requirements.txt 
+  - conda install streamlit 
+  - conda install python-dotenv 
+  - conda install spyder
+
+- **Setup environment variables**:
+  - Create a .env file in the root of the project. 
+  - Add the following line to the file: API_BASE_URL="https://bodhi-23sn.onrender.com/api"
+
+- **Running the Application**:
+  - Navigate to the directory where the main app file is located (e.g., Bookstore_UI.py). 
+  - Run the following command: streamlit run Bookstore_UI.py
+  - Open the app in your browser using the URL provided in the terminal (usually http://localhost:8501). 
+  
+
+
