@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const MfrOrder = require('../models/mfrorders')
 
 /**
  * @swagger
@@ -11,7 +12,7 @@ const mongoose = require('mongoose');
  *       required:
  *         - orderNumber
  *         - supplierName
- *         - bookOrders
+ *         - booksOrdered
  *         - status
  *         - totalCost
  *         - orderDate
@@ -19,16 +20,13 @@ const mongoose = require('mongoose');
  *         - createdAt
  *         - updatedAt
  *       properties:
- *         _id:
- *           type: string
- *           description: Auto-generated MongoDB ID
  *         orderNumber:
  *           type: string
  *           description: Order number (will this be an input or auto)
  *         supplierName:
  *           type: string
  *           description: Supplier the order is sent to
- *         bookOrders:
+ *         booksOrdered:
  *           type: array
  *           description: list of books ordered
  *           items:
@@ -64,57 +62,6 @@ const mongoose = require('mongoose');
  *           description: Any updates to the order will change this value
  */
 
-// Mfr Order Schema
-const mfrOrderSchema = new mongoose.Schema({
-  orderNumber: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  supplierName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  booksOrdered: [{
-    bookId: {
-      type: String,
-      required: true
-    },
-    quantity: {
-      type: Number,
-      min: 0 
-    }  
-  }],
-  status: {
-    type: String,
-    required: true
-  },
-  totalCost: {
-    type: Number,
-    min: 0.0
-  },
-  orderDate: {
-    type: Date,
-    default: Date.now
-  },
-  expectedDeliveryDate: {
-    type: Date,
-    default: Date.now
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
-mfrOrderSchema.index({ orderNumber: 1 });
-const MfrOrder = mongoose.model('MfrOrder', mfrOrderSchema);
-
 /**
  * @swagger
  * /api/manufacturerOrders:
@@ -123,16 +70,21 @@ const MfrOrder = mongoose.model('MfrOrder', mfrOrderSchema);
  *     tags:
  *       - Manufacturer Orders
  *     parameters:
- *       - in: query
+ *       - in: path
  *         name: supplierName
  *         schema:
  *           type: string
- *         description: Filter by supplier
- *       - in: query
+ *         description: Supplier Name
+ *       - in: path
  *         name: status
  *         schema:
  *           type: string
- *         description: Filter by status
+ *         description: Order Status
+ *       - in: path
+ *         name: orderDate
+ *         schema:
+ *           type: string
+ *         description: Order date 
  *     responses:
  *       200:
  *         description: List of vendor orders
@@ -141,15 +93,16 @@ const MfrOrder = mongoose.model('MfrOrder', mfrOrderSchema);
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/MfrOrders'
+ *                 $ref: '#/components/schemas/MfrOrder'
  */
 router.get('/', async (req, res) => {
   try {
-    const { supplierName, status } = req.query;
+    const { supplierName, status, orderDate } = req.query;
     let query = {};
 
     if (supplierName) query.supplierName = supplierName;
     if (status) query.status = status;
+    if (orderDate) query.orderDate = orderDate;
 
     console.log('Collection name:', MfrOrder.collection.name);
     console.log('Database name:', mongoose.connection.db.databaseName);
@@ -164,5 +117,92 @@ router.get('/', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/manufacturerOrders:
+ *   post:
+ *     summary: Create a new order
+ *     tags: 
+ *       - Manufacturer Orders
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MfrOrder'
+ *     responses:
+ *       201:
+ *         description: Order created successfully
+ *       400:
+ *         description: Invalid input or order already exists
+ */
+
+router.post('/', async (req, res) => {
+  try{ 
+    const order = new MfrOrder(req.body);
+    const savedOrder = await order.save();
+    res.status(201).json(savedOrder);
+  } catch {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+    res.status(400).json({ error: 'Error creating user', details: error.message });
+  }
+})
+
+/**
+ * @swagger
+ * /api/manufacturerOrders/{id}:
+ *   put:
+ *     summary: Update an order
+ *     tags: 
+ *       - Manufacturer Orders
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Book ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MfrOrder'
+ *     responses:
+ *       200:
+ *         description: Order updated successfully
+ *       404:
+ *         description: Order not found
+ */
+router.put('/:id', async (req, res) => {
+  try {
+    const updates = {
+      ...req.body,
+      updatedAt: Date.now()
+    };
+
+    const order = await MfrOrder.findByIdAndUpdate(
+      new mongoose.Types.ObjectId(req.params.id),
+      updates,
+      {
+        new: true,
+        runValidators: true
+      }
+    ).select('-__v');
+
+    if (!order) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+
+    res.json(order);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'Order number already exists' });
+    }
+    res.status(400).json({ error: 'Order updating book', details: error.message });
+  }
+});
 
 module.exports = router;

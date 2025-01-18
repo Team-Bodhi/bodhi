@@ -22,9 +22,6 @@ const Book = require('../models/book');
  *         - coverImageUrl
  *         - price
  *       properties:
- *         _id:
- *           type: object
- *           description: Auto-generated MongoDB ID
  *         title:
  *           type: string
  *           description: Book title
@@ -82,20 +79,20 @@ const Book = require('../models/book');
  *       - Book Inventory
  *     parameters:
  *       - in: query
+ *         name: title
+ *         schema:
+ *           type: string
+ *         description: Filter by title
+ *       - in: query
+ *         name: author
+ *         schema:
+ *           type: string
+ *         description: Filter by author
+ *       - in: query
  *         name: genre
  *         schema:
  *           type: string
  *         description: Filter by genre
- *       - in: query
- *         name: language
- *         schema:
- *           type: string
- *         description: Filter by language
- *       - in: query
- *         name: inStock
- *         schema:
- *           type: boolean
- *         description: Filter for books in stock
  *     responses:
  *       200:
  *         description: List of books
@@ -108,12 +105,12 @@ const Book = require('../models/book');
  */
 router.get('/', async (req, res) => {
   try {
-    const { genre, language, inStock } = req.query;
+    const { title, author, genre } = req.query;
     let query = {};
 
+    if (title) query.title = title;
+    if (author) query.author = author;
     if (genre) query.genre = genre;
-    if (language) query.language = language;
-    if (inStock === 'true') query.quantity = { $gt: 0 };
 
     console.log('Collection name:', Book.collection.name);
     console.log('Database name:', mongoose.connection.db.databaseName);
@@ -181,7 +178,30 @@ router.get('/:id', async (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Book'
+ *             type: object
+ *             required:
+ *               - title
+ *               - author
+ *               - genre
+ *               - isbn
+ *               - quantity
+ *               - price
+ *               - language
+ *             properties:
+ *               title:
+ *                 type: string
+ *               author:
+ *                 type: string
+  *               genre:
+ *                 type: string
+ *               isbn:
+ *                 type: string
+ *               quantity:
+ *                 type: number
+ *               price:
+ *                 type: number
+ *               language:
+ *                 type: string
  *     responses:
  *       201:
  *         description: Book created successfully
@@ -190,9 +210,20 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const book = new Book(req.body);
+    const { title, author, genre, isbn, quantity, price, language } = req.body;
     const id = new mongoose.Types.ObjectId;
+    
+    const book = new Book();
+    
     book._id = id;
+    book.title = title;
+    book.author = author;
+    book.genre = genre;
+    book.isbn = isbn;
+    book.quantity = quantity;
+    book.price = price;
+    book.language = language;
+
     const savedBook = await book.save();
     res.status(201).json(savedBook);
   } catch (error) {

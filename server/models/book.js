@@ -1,9 +1,6 @@
 const mongoose = require('mongoose');
 
 const bookSchema = new mongoose.Schema({
-  _id: {
-    type: Object
-  },
   title: {
     type: String,
     required: true,
@@ -26,21 +23,17 @@ const bookSchema = new mongoose.Schema({
     trim: true
   },
   summary: {
-    type: String,
-    required: true
+    type: String
   },
   publisher: {
     type: String,
-    required: true,
     trim: true
   },
   publicationDate: {
-    type: Date,
-    required: true
+    type: Date
   },
   pageCount: {
     type: Number,
-    required: true,
     min: 1
   },
   language: {
@@ -50,7 +43,6 @@ const bookSchema = new mongoose.Schema({
   },
   coverImageUrl: {
     type: String,
-    required: true,
     trim: true
   },
   quantity: {
@@ -67,8 +59,8 @@ const bookSchema = new mongoose.Schema({
   lowStockThreshold: {
     type: Number,
     required: true,
-    min: 1,
-    default: 5
+    min: 0,
+    default: 0
   },
   createdAt: {
     type: Date,
