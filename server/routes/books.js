@@ -79,20 +79,20 @@ const Book = require('../models/book');
  *       - Book Inventory
  *     parameters:
  *       - in: query
+ *         name: title
+ *         schema:
+ *           type: string
+ *         description: Filter by title
+ *       - in: query
+ *         name: author
+ *         schema:
+ *           type: string
+ *         description: Filter by author
+ *       - in: query
  *         name: genre
  *         schema:
  *           type: string
  *         description: Filter by genre
- *       - in: query
- *         name: language
- *         schema:
- *           type: string
- *         description: Filter by language
- *       - in: query
- *         name: inStock
- *         schema:
- *           type: boolean
- *         description: Filter for books in stock
  *     responses:
  *       200:
  *         description: List of books
@@ -105,12 +105,12 @@ const Book = require('../models/book');
  */
 router.get('/', async (req, res) => {
   try {
-    const { genre, language, inStock } = req.query;
+    const { title, author, genre } = req.query;
     let query = {};
 
+    if (title) query.title = title;
+    if (author) query.author = author;
     if (genre) query.genre = genre;
-    if (language) query.language = language;
-    if (inStock === 'true') query.quantity = { $gt: 0 };
 
     console.log('Collection name:', Book.collection.name);
     console.log('Database name:', mongoose.connection.db.databaseName);
