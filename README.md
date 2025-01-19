@@ -46,7 +46,7 @@ Detailed sales reporting and analytics.
 - **Setup environment variables**:
   - Create a .streamlit/secrets.toml file in the root of the project. 
   - Add the following lines to the file:
-```json
+```toml
 [api]
 base_url = "https://bodhi-23sn.onrender.com/api"
 ```
