@@ -1,4 +1,3 @@
-pymongo
 streamlit
 requests
-pandas
+spyder
