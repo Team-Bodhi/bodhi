@@ -22,7 +22,7 @@ if 'page' not in st.session_state:
     st.session_state.page = 'main'
 
 # API endpoints
-API_BASE_URL = "http://localhost:3000/api"
+API_BASE_URL = st.secrets["api"]["base_url"]
 
 def fetch_books():
     try:
