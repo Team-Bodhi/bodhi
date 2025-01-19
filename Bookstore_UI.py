@@ -8,24 +8,13 @@ Created on Thu Jan  9 17:36:27 2025
  
 # Passed- all filters, adding a book, deleting a book. login, create user.
 
-import streamlit as st
 import requests
-from dotenv import load_dotenv
-import os
-
-# For local environment testing
-# Load environment variables from .env file
-load_dotenv()
-
-API_BASE_URL = os.getenv("API_BASE_URL")
-if not API_BASE_URL:
-    raise ValueError("API_BASE_URL is not set. Please configure it in the .env file.")
-
+import streamlit as st
 
 # For streamlit cloud deployment uncomment this sesction, comment out local section
-#API_BASE_URL = st.secrets["api"]["user_url"]
-# if not API_BASE_URL:
-#     raise ValueError("API_BASE_URL i snot set in Streamlit secrets.")
+API_BASE_URL = st.secrets["api"]["base_url"]
+if not API_BASE_URL:
+    raise ValueError("API_BASE_URL is not set in Streamlit secrets.")
 
 API_BOOKS_URL = API_BOOKS_URL = f"{API_BASE_URL}/books"
 API_USER_URL = f"{API_BASE_URL}/users"
