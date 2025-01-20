@@ -144,9 +144,9 @@ router.post('/', async (req, res) => {
     res.status(201).json(savedOrder);
   } catch {
     if (error.code === 11000) {
-      return res.status(400).json({ error: 'User already exists' });
+      return res.status(400).json({ error: 'Order already exists' });
     }
-    res.status(400).json({ error: 'Error creating user', details: error.message });
+    res.status(400).json({ error: 'Error creating order', details: error.message });
   }
 })
 
@@ -246,7 +246,7 @@ router.put('/cancel/:id', async (req, res) => {
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Order number already exists' });
     }
-    res.status(400).json({ error: 'Order updating book', details: error.message });
+    res.status(400).json({ error: 'Error updating order', details: error.message });
   }
 });
 
