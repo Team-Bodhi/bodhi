@@ -179,7 +179,6 @@ def fetch_orders(supplier_name=None, status=None):
 def cancel_order(order_id):
     response = requests.put(f"{API_BASE_URL}/cancel/{order_id}")
     if response.status_code == 200:
-        os.write(1,b'Cancel this order.\n')
         st.success(f"Order canceled successfully!")
         return True
     else:
@@ -558,9 +557,9 @@ if st.session_state.logged_in:
                         st.write(f"**Supplier Name**: {order['supplierName']}")
                         st.write(f"**Books Ordered**: {order['booksOrdered']}")
                         st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
-                        date = formatDatetime(order['orderDate'])
+                        date = formatDate(order['orderDate'])
                         st.write(f"**Order Date**: {date}")
-                        date = formatDatetime(order['expectedDeliveryDate'])
+                        date = formatDate(order['expectedDeliveryDate'])
                         st.write(f"**Expected Delivery Date**: {date}")
                         if st.button(f"Cancel Order", order['_id']):
                             cancel_order(order_id)
