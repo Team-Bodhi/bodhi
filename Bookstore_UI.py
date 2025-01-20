@@ -8,24 +8,13 @@ Created on Thu Jan  9 17:36:27 2025
  
 # Passed- all filters, adding a book, deleting a book. login, create user.
 
-import streamlit as st
 import requests
-from dotenv import load_dotenv
-import os
-
-# For local environment testing
-# Load environment variables from .env file
-load_dotenv()
-
-API_BASE_URL = os.getenv("API_BASE_URL")
-if not API_BASE_URL:
-    raise ValueError("API_BASE_URL is not set. Please configure it in the .env file.")
-
+import streamlit as st
 
 # For streamlit cloud deployment uncomment this sesction, comment out local section
-#API_BASE_URL = st.secrets["api"]["user_url"]
-# if not API_BASE_URL:
-#     raise ValueError("API_BASE_URL i snot set in Streamlit secrets.")
+API_BASE_URL = st.secrets["api"]["base_url"]
+if not API_BASE_URL:
+    raise ValueError("API_BASE_URL is not set in Streamlit secrets.")
 
 API_BOOKS_URL = API_BOOKS_URL = f"{API_BASE_URL}/books"
 API_USER_URL = f"{API_BASE_URL}/users"
@@ -110,6 +99,34 @@ def delete_book(book_id):
         st.error(f"Failed to delete the book: {response.text}")
 
 
+#Function for creating orders 
+#FIXME requires testing
+def create_order(order_number, supplier_name, books_ordered, status, total_cost, order_date, expected_delivery_date):
+    new_order = {
+        "orderNumber": order_number,
+        "supplierName": supplier_name,
+        "booksOrdered": books_ordered,
+        "status": status,
+        "totalCost": total_cost,
+        "orderDate": order_date,
+        "expectedDeliveryDate": expected_delivery_date,
+    }
+    
+    
+    response = requests.post(API_MFRORDER_URL, json=new_order)
+    
+    # Handle the response
+    if response.status_code == 201:
+        st.success(f"Order '{order_number}' created successfully.")
+        return response.json() # Return the created order for further use
+    elif response.status_code == 400:
+        st.error(" Invalid input or order already exists")
+        return None
+    else:
+        st.error("Failed to create the order. Please try again.")
+        return None
+  
+ 
 # Function to fetch manufacturer orders
 def fetch_orders(supplier_name=None, status=None):
     params = {}
@@ -125,26 +142,7 @@ def fetch_orders(supplier_name=None, status=None):
         st.error("Failed to fetch orders. Please try again.")
         return []
 
-# Function for creating orders (future POST endpoint)
-# FIXME uncomment once POST is available
-# def create_order(order_number, supplier_name, book_orders, status, total_cost, order_date, expected_delivery_date):
-#     new_order = {
-#         "orderNumber": order_number,
-#         "supplierName": supplier_name,
-#         "bookOrders": book_orders,
-#         "status": status,
-#         "totalCost": total_cost,
-#         "orderDate": order_date,
-#         "expectedDeliveryDate": expected_delivery_date,
-#     }
-    
-    #FIXME uncomment when POST is available
-    # response = requests.post(API_MFRORDER_URL, json=new_order)
-    # if response.status_code == 201:
-    #     st.success(f"Order '{order_number}' created successfully.")
-    # else:
-    #     st.error("Failed to create the order. Please try again.")
- 
+
     
 # API Fuctions for user authentication
 
@@ -463,18 +461,60 @@ if st.session_state.logged_in:
         """)
 
         # Section: Create Purchase Order Form
-        # order submission goes nowhere until we have an API endpoint for saving orders
+        # Needs testing
         st.subheader("Create Purchase Order")
-        with st.form("purchase_order_form"):
-            book_title = st.selectbox("Select Book", [book['title'] for book in fetch_books()])
+        with st.form("purchase_order_form", clear_on_submit=True):
+            # Select book titles from the inventory
+            books = fetch_books()
+            book_titles = [book['title'] for book in books]
+            book_title = st.selectbox("Select Book", book_titles if books else [])
+            
+            # Input other fields
             quantity_to_order = st.number_input("Quantity to Order", min_value=1, value=1)
+            order_number = st.text_input("Order Number", placeholder="e.g., ORD123")
+            supplier_name = st.text_input("Supplier Name", placeholder="e.g., Book Supplier Inc.")
+            status = st.selectbox("Status", ["Pending", "Confirmed", "Shipped"])
+            total_cost = st.number_input("Total Cost", min_value=0.0, step=0.01)
+            order_date = st.date_input("Order Date")
+            expected_delivery_date = st.date_input("Expected Delivery Date")
+
             submitted = st.form_submit_button("Save Purchase Order")
             if submitted:
-                st.info(f"Order functionality is not yet connected to the backend. Order for {quantity_to_order} units of '{book_title}' was simulated.")
-                # FIXME uncomment when endpoint is ready
-                #selected_book = next(book for book in fetch_books() if book['title'] == book_title)
-                #submit_order(selected_book['_id'], quantity_to_order)
+                if book_title and order_number and supplier_name:
+                    # Match the selected book with its details
+                    selected_book = next((book for book in books if book['title'] == book_title), None)
+                    if selected_book:
+                        # Create the new order
+                        books_ordered = [{"title": book_title, "quantity": quantity_to_order}]
+                        new_order = create_order(
+                            order_number=order_number,
+                            supplier_name=supplier_name,
+                            books_ordered=books_ordered,
+                            status=status,
+                            total_cost=total_cost,
+                            order_date=str(order_date),  # Convert date to string for API
+                            expected_delivery_date=str(expected_delivery_date),  # Convert date to string for API
+                        )
+                        if new_order:
+                            st.info(f"Order for {quantity_to_order} units of '{book_title}' created successfully!")
+                    else:
+                        st.error("Failed to match the selected book.")
+                else:
+                    st.error("Please fill out all required fields.")
+           
+
 
         # Section: View Existing Purchase Orders
         st.subheader("Existing Purchase Orders")
-        st.write("Table of existing purchase orders will be displayed here.")
+        orders = fetch_orders()
+        if orders:
+                for order in orders:
+                    with st.expander(f"Order: {order['orderNumber']} ({order['status']})"):
+                        st.write(f"**Supplier Name**: {order['supplierName']}")
+                        st.write(f"**Books Ordered**: {order['booksOrdered']}")
+                        st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
+                        st.write(f"**Order Date**: {order['orderDate']}")
+                        st.write(f"**Expected Delivery Date**: {order['expectedDeliveryDate']}")
+        else:
+            st.write("No existing purchase orders found.")        
+        

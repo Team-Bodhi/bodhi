@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+
+# Environment
+.env
+.venv/
+venv/
+ENV/
+env.bak/
+*.env
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Streamlit specific
+.streamlit/
+
+# Node modules (if using Node.js for frontend)
+node_modules/
+
+# Package managers
+package-lock.json
+yarn.lock
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Output of 'npm pack'
+*.tgz
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Yarn Integrity file
+.yarn-integrity

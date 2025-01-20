@@ -42,13 +42,14 @@ Detailed sales reporting and analytics.
 
 - **Install dependencies**: (if using conda follow below)
   - conda install -r requirements.txt 
-  - conda install streamlit 
-  - conda install python-dotenv 
-  - conda install spyder
 
 - **Setup environment variables**:
-  - Create a .env file in the root of the project. 
-  - Add the following line to the file: API_BASE_URL="https://bodhi-23sn.onrender.com/api"
+  - Create a .streamlit/secrets.toml file in the root of the project. 
+  - Add the following lines to the file:
+```toml
+[api]
+base_url = "https://bodhi-23sn.onrender.com/api"
+```
 
 - **Running the Application**:
   - Navigate to the directory where the main app file is located (e.g., Bookstore_UI.py). 
