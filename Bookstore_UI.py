@@ -23,6 +23,40 @@ API_MFRORDER_URL = f"{API_BASE_URL}/manufacturerOrders"
 
 # Define all functions
 
+# datetime formatters
+def formatDate(datetime):
+    date = datetime.split("T")
+    formatDate = date[0].split("-")
+    
+    day = formatDate[2]
+    month = formatDate[1]
+    year = formatDate[0]
+    
+    if month[0] == "0":
+        month = month[1]
+    if day[0] == "0":
+        day = day[1]
+        
+    return (f"{month}/{day}/{year}")
+
+def formatTime(datetime):
+    time = datetime.split("T")
+    formatTime = time[1].split(":")
+    
+    hour = formatTime[2]
+    minute = formatTime[1]
+    
+    if hour[0] == "0":
+        hour = hour[1]
+        
+    return (f"{hour}:{minute}")
+
+def formatDatetime(datetime):
+    date = formatDate(datetime)
+    time = formatTime(datetime)
+        
+    return (f"{date} {time}")
+
 # function to fetch all books- Passed testing
 
 def fetch_books(genre=None, title=None, author=None):
@@ -142,7 +176,15 @@ def fetch_orders(supplier_name=None, status=None):
         st.error("Failed to fetch orders. Please try again.")
         return []
 
-
+def cancel_order(order_id):
+    response = requests.put(f"{API_BASE_URL}/cancel/{order_id}")
+    if response.status_code == 200:
+        os.write(1,b'Cancel this order.\n')
+        st.success(f"Order canceled successfully!")
+        return True
+    else:
+        st.error(f"Failed to cancel order: {response.text}")
+        return False
     
 # API Fuctions for user authentication
 
@@ -502,19 +544,26 @@ if st.session_state.logged_in:
                 else:
                     st.error("Please fill out all required fields.")
            
-
+        cancel_button = False
+        cancel_order_id = ""
 
         # Section: View Existing Purchase Orders
         st.subheader("Existing Purchase Orders")
         orders = fetch_orders()
         if orders:
                 for order in orders:
+                    order_id = order['_id']
+                    date = ""
                     with st.expander(f"Order: {order['orderNumber']} ({order['status']})"):
                         st.write(f"**Supplier Name**: {order['supplierName']}")
                         st.write(f"**Books Ordered**: {order['booksOrdered']}")
                         st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
-                        st.write(f"**Order Date**: {order['orderDate']}")
-                        st.write(f"**Expected Delivery Date**: {order['expectedDeliveryDate']}")
+                        date = formatDatetime(order['orderDate'])
+                        st.write(f"**Order Date**: {date}")
+                        date = formatDatetime(order['expectedDeliveryDate'])
+                        st.write(f"**Expected Delivery Date**: {date}")
+                        if st.button(f"Cancel Order", order['_id']):
+                            cancel_order(order_id)
+                        
         else:
-            st.write("No existing purchase orders found.")        
-        
+            st.write("No existing purchase orders found.")
