@@ -70,17 +70,17 @@ const MfrOrder = require('../models/mfrorders')
  *     tags:
  *       - Manufacturer Orders
  *     parameters:
- *       - in: path
+ *       - in: query
  *         name: supplierName
  *         schema:
  *           type: string
  *         description: Supplier Name
- *       - in: path
+ *       - in: query
  *         name: status
  *         schema:
  *           type: string
  *         description: Order Status
- *       - in: path
+ *       - in: query
  *         name: orderDate
  *         schema:
  *           type: string
