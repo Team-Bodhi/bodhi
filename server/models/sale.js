@@ -50,11 +50,7 @@ const saleSchema = new mongoose.Schema({
         required: true,
         trim: true,
         enum: ['instore', 'online']
-    },
-    supplierName: {
-        type: String,
-        required: true,
-        trim: true
+    
     },
     bookOrdered: [bookOrderedSchema],
     status: {
