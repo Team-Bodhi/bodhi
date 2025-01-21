@@ -119,6 +119,45 @@ router.get('/', async (req, res) => {
 
 /**
  * @swagger
+ * /api/manufacturerOrders/{id}:
+ *   get:
+ *     summary: Returns a list of vendor orders
+ *     tags:
+ *       - Manufacturer Orders
+ *     parameters:
+ *       - in: query
+ *         name: id
+ *         schema:
+ *           type: string
+ *         description: Order id
+ *     responses:
+ *       200:
+ *         description: List of vendor orders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/MfrOrder'
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const objectId = new mongoose.Types.ObjectId(req.params.id);
+    const mfrOrder = await MfrOrder.findOne({ _id: objectId }).select('-__v');
+    if (!mfrOrder) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    res.json(mfrOrder);
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ error: 'Invalid order ID format' });
+    }
+    res.status(500).json({ error: 'Error fetching order' });
+  }
+});
+
+/**
+ * @swagger
  * /api/manufacturerOrders:
  *   post:
  *     summary: Create a new order
@@ -163,7 +202,7 @@ router.post('/', async (req, res) => {
  *         required: true
  *         schema:
  *           type: string
- *         description: Book ID
+ *         description: order ID
  *     requestBody:
  *       required: true
  *       content:
