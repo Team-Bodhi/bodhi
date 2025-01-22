@@ -521,7 +521,22 @@ if st.session_state.logged_in and page == "Inventory Management":
                        st.session_state.refresh_inventory = True
                        st.rerun()
         
-             
+# Sales Records Page
+elif page == "Sales Records":
+    st.title("📊 Sales Records")
+    st.subheader("View and Analyze Sales Data")
+    st.write("""
+    Welcome to the **Sales Records** section. Here you can:
+    - View detailed sales records of rare books.
+    - Generate sales reports.
+    - Analyze trends and performance over time.
+    """)
+
+
+
+
+
+
 # Orders Page
 elif page == "Orders":
     st.title("🛒 Orders")
