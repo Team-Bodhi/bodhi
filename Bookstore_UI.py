@@ -5,8 +5,9 @@ Created on Thu Jan  9 17:36:27 2025
 @author: kaymo
 """
 
-import streamlit as st
 import requests
+import streamlit as st
+
 
 # For streamlit cloud deployment uncomment this sesction, comment out local section
 API_BASE_URL = st.secrets["api"]["base_url"]
@@ -176,7 +177,9 @@ def fetch_orders(supplier_name=None, status=None):
 def cancel_order(order_id):
     response = requests.put(f"{API_BASE_URL}/cancel/{order_id}")
     if response.status_code == 200:
+
         st.success("Order canceled successfully!")
+
         return True
     else:
         st.error(f"Failed to cancel order: {response.text}")
@@ -571,6 +574,9 @@ elif page == "Orders":
                         st.error("Failed to match the selected book.")
                 else:
                     st.error("Please fill out all required fields.")
+
+           
+
         cancel_button = False
         cancel_order_id = ""
 
@@ -578,6 +584,7 @@ elif page == "Orders":
         st.subheader("Existing Purchase Orders")
         orders = fetch_orders()
         if orders:
+
             for order in orders:
                 order_id = order['_id']
                 date = ''
@@ -593,3 +600,6 @@ elif page == "Orders":
                         cancel_order(order_id)
         else:
             st.write("No existing purchase orders found.")
+
+                
+
