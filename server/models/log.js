@@ -61,6 +61,12 @@ const logSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: 'Unknown'
+  },
+  environment: {
+    type: String,
+    required: true,
+    enum: ['development', 'production', 'test', 'staging'],
+    default: 'development'
   }
 });
 
