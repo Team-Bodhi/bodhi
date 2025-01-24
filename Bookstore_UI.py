@@ -178,6 +178,7 @@ def fetch_orders(supplier_name=None, status=None):
          params['status'] = status
         
     response = requests.get(API_MFRORDER_URL, params=params)
+    print(response)
     if response.status_code == 200:
         return response.json()  # Returns list of orders as JSON
     else:
@@ -208,9 +209,8 @@ def order_details(order_id):
     order = fetch_order_by_id(order_id)
 
     if order:
-        print(order)
         st.write(f"**Supplier Name**: {order['supplierName']}")
-        # st.write(f"**Books Ordered**: {order['booksOrdered']}")
+        st.write(f"**Status**: {order['status']}")
         st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
         date = formatDatetime(order['orderDate'])
         st.write(f"**Order Date**: {date}")
@@ -218,7 +218,7 @@ def order_details(order_id):
         st.write(f"**Expected Delivery Date**: {date}")    
                 
         st.subheader("Books Ordered:")
-        # Display table headers with Streamlit columns
+        # Display table headers with Streamlit columns 
         header_cols = st.columns([3, 3, 3, 2])
         header_cols[0].write("Title")
         header_cols[1].write("Author")
@@ -490,182 +490,182 @@ if st.session_state.logged_in:
                 if cols[5].button("Edit", key=f"edit_{book['_id']}"):
                     st.session_state.selected_book = book
     
-           if cols[5].button("Delete", key=f"delete_{book['_id']}"):
-               delete_book(book["_id"])
-               st.success(f"Book '{book['title']}' deleted successfully.")
-               st.session_state.refresh_inventory = True
-               st.rerun()
-        
+                if cols[5].button("Delete", key=f"delete_{book['_id']}"):
+                    delete_book(book["_id"])
+                    st.success(f"Book '{book['title']}' deleted successfully.")
+                    st.session_state.refresh_inventory = True
+                    st.rerun()
+
 
         
-   # Display the edit form in the sidebar if a book is selected
-   if st.session_state.selected_book:
-       book = st.session_state.selected_book
-       with st.sidebar:
-           st.subheader("Edit Book")
-           with st.form("update_book_form", clear_on_submit=True):
-               new_title = st.text_input("Book Title", value=book["title"])
-               new_author = st.text_input("Author", value=book["author"])
-               new_genre = st.text_input("Genre", value=book["genre"])
-               new_quantity = st.number_input("Quantity", min_value=0, value=book["quantity"])
-               new_price = st.number_input("Price", min_value=0.0, value=book["price"])
-               new_language = st.text_input("Language", value=book.get("language", ""))
-               new_isbn = st.text_input("ISBN", value=book.get("isbn", ""))
+                # Display the edit form in the sidebar if a book is selected
+                if st.session_state.selected_book:
+                    book = st.session_state.selected_book
+                    with st.sidebar:
+                        st.subheader("Edit Book")
+                        with st.form("update_book_form", clear_on_submit=True):
+                            new_title = st.text_input("Book Title", value=book["title"])
+                            new_author = st.text_input("Author", value=book["author"])
+                            new_genre = st.text_input("Genre", value=book["genre"])
+                            new_quantity = st.number_input("Quantity", min_value=0, value=book["quantity"])
+                            new_price = st.number_input("Price", min_value=0.0, value=book["price"])
+                            new_language = st.text_input("Language", value=book.get("language", ""))
+                            new_isbn = st.text_input("ISBN", value=book.get("isbn", ""))
+                        
+                            update_submitted = st.form_submit_button("Update Book")
+                            if update_submitted:
+                                success = update_book(
+                                    book["_id"],
+                                    new_title,
+                                    new_author,
+                                    new_genre,
+                                    int(new_quantity),
+                                    float(new_price),
+                                    new_language,
+                                    new_isbn,
+                                )
+                                if success:
+                                    st.success(f"Book '{new_title}' updated successfully!")
+                                    # Clear the selected book and refresh the books
+                                    st.session_state.selected_book = None
+                                    st.session_state.refresh_inventory = True
+                                    st.rerun()
         
-               update_submitted = st.form_submit_button("Update Book")
-               if update_submitted:
-                   success = update_book(
-                       book["_id"],
-                       new_title,
-                       new_author,
-                       new_genre,
-                       int(new_quantity),
-                       float(new_price),
-                       new_language,
-                       new_isbn,
-                   )
-                   if success:
-                       st.success(f"Book '{new_title}' updated successfully!")
-                       # Clear the selected book and refresh the books
-                       st.session_state.selected_book = None
-                       st.session_state.refresh_inventory = True
-                       st.rerun()
-        
-# Sales Records Page
-elif page == "Sales Records":
-    st.title("📊 Sales Records")
-    st.subheader("View and Analyze Sales Data")
-    st.write("""
-    Welcome to the **Sales Records** section. Here you can:
-    - View detailed sales records of rare books.
-    - Generate sales reports.
-    - Analyze trends and performance over time.
-    """)
+    # Sales Records Page
+    elif page == "Sales Records":
+        st.title("📊 Sales Records")
+        st.subheader("View and Analyze Sales Data")
+        st.write("""
+        Welcome to the **Sales Records** section. Here you can:
+        - View detailed sales records of rare books.
+        - Generate sales reports.
+        - Analyze trends and performance over time.
+        """)
 
-    # Generate Sales Report
-    st.subheader("Generate Sales Report")
-    with st.form("sales_report_form"):
-         start_date = st.date_input("Start Date")
-         end_date = st.date_input("End Date")
-         report_type = st.selectbox("Report Type", ["Summary", "Detailed"])
-         submitted = st.form_submit_button("Generate Report")
+        # Generate Sales Report
+        st.subheader("Generate Sales Report")
+        with st.form("sales_report_form"):
+            start_date = st.date_input("Start Date")
+            end_date = st.date_input("End Date")
+            report_type = st.selectbox("Report Type", ["Summary", "Detailed"])
+            submitted = st.form_submit_button("Generate Report")
 
-         if submitted:
-             try:
-                 report_params = {
-                     "start_date": str(start_date),
-                     "end_date": str(end_date),
-                     "type": report_type,
-                 }
-                 report_response = requests.get(f"{API_BASE_URL}/sales/report", params=report_params)
-                 if report_response.status_code == 200:
-                     report_data = report_response.json()
-                     st.write("### Sales Report")
-                     st.dataframe(report_data)
-                 else:
-                     st.error(f"Failed to generate report: {report_response.text}")
-             except requests.exceptions.RequestException as e:
-                 st.error(f"Error generating sales report: {e}")
+            if submitted:
+                try:
+                    report_params = {
+                        "start_date": str(start_date),
+                        "end_date": str(end_date),
+                        "type": report_type,
+                    }
+                    report_response = requests.get(f"{API_BASE_URL}/sales/report", params=report_params)
+                    if report_response.status_code == 200:
+                        report_data = report_response.json()
+                        st.write("### Sales Report")
+                        st.dataframe(report_data)
+                    else:
+                        st.error(f"Failed to generate report: {report_response.text}")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Error generating sales report: {e}")
 
-    # Fetch and Display Sales Records
-    st.subheader("Sales Records")
-    try:
-        response = requests.get(f"{API_BASE_URL}/sales")  # Replace with the correct endpoint
-        if response.status_code == 200:
-            sales_data = response.json()
-            st.dataframe(sales_data)  # Display sales records in a tabular format
-        else:
-            st.write("No sales records found or failed to fetch data.")
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching sales data: {e}")
-
-    
-    # Sales Trends Analysis
-    st.subheader("Sales Trends and Analysis")
-    trend_options = ["Sales Over Time", "Top Selling Books", "Revenue by Genre"]
-    selected_trend = st.selectbox("Select Trend to Analyze", trend_options)
-
-    try:
-        if selected_trend == "Sales Over Time":
-            trend_data = requests.get(f"{API_BASE_URL}/sales/trends/time").json()
-            if trend_data:
-                st.line_chart(trend_data)
+        # Fetch and Display Sales Records
+        st.subheader("Sales Records")
+        try:
+            response = requests.get(f"{API_BASE_URL}/sales")  # Replace with the correct endpoint
+            if response.status_code == 200:
+                sales_data = response.json()
+                st.dataframe(sales_data)  # Display sales records in a tabular format
             else:
-                st.write("No data available for this trend.")
+                st.write("No sales records found or failed to fetch data.")
+        except requests.exceptions.RequestException as e:
+            st.error(f"Error fetching sales data: {e}")
 
-        elif selected_trend == "Top Selling Books":
-            top_books_data = requests.get(f"{API_BASE_URL}/sales/trends/top-books").json()
-            if top_books_data:
-                st.bar_chart(top_books_data)
-            else:
-                st.write("No data available for this trend.")
+        
+        # Sales Trends Analysis
+        st.subheader("Sales Trends and Analysis")
+        trend_options = ["Sales Over Time", "Top Selling Books", "Revenue by Genre"]
+        selected_trend = st.selectbox("Select Trend to Analyze", trend_options)
 
-        elif selected_trend == "Revenue by Genre":
-            revenue_data = requests.get(f"{API_BASE_URL}/sales/trends/revenue-by-genre").json()
-            if revenue_data:
-                st.bar_chart(revenue_data)
-            else:
-                st.write("No data available for this trend.")
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching trend data: {e}")
+        try:
+            if selected_trend == "Sales Over Time":
+                trend_data = requests.get(f"{API_BASE_URL}/sales/trends/time").json()
+                if trend_data:
+                    st.line_chart(trend_data)
+                else:
+                    st.write("No data available for this trend.")
+
+            elif selected_trend == "Top Selling Books":
+                top_books_data = requests.get(f"{API_BASE_URL}/sales/trends/top-books").json()
+                if top_books_data:
+                    st.bar_chart(top_books_data)
+                else:
+                    st.write("No data available for this trend.")
+
+            elif selected_trend == "Revenue by Genre":
+                revenue_data = requests.get(f"{API_BASE_URL}/sales/trends/revenue-by-genre").json()
+                if revenue_data:
+                    st.bar_chart(revenue_data)
+                else:
+                    st.write("No data available for this trend.")
+        except requests.exceptions.RequestException as e:
+            st.error(f"Error fetching trend data: {e}")
 
 
 
 
-# Orders Page
-elif page == "Orders":
-    st.title("🛒 Orders")
-    st.subheader("Manage Purchase Orders")
-    st.write("""
-    Welcome to the **Orders** section. Here you can:
-    - View and manage existing purchase orders.
-    - Create new orders for books running low on stock.
-    - Ensure a steady supply of rare books for our customers.
-    """)
+    # Orders Page
+    elif page == "Orders":
+        st.title("🛒 Orders")
+        st.subheader("Manage Purchase Orders")
+        st.write("""
+            Welcome to the **Orders** section. Here you can:
+            - View and manage existing purchase orders.
+            - Create new orders for books running low on stock.
+            - Ensure a steady supply of rare books for our customers.
+        """)
 
-        # Section: Create Purchase Order Form (needs to be its own section to accommodate multiple books)
+            # Section: Create Purchase Order Form (needs to be its own section to accommodate multiple books)
+                
             
-        
-        # st.subheader("Create Purchase Order")
-        # with st.form("purchase_order_form", clear_on_submit=True):
-        #     # Select book titles from the inventory
-        #     books = fetch_books()
-        #     book_titles = [book['title'] for book in books]
-        #     book_title = st.selectbox("Select Book", book_titles if books else [])
-            
-        #     # Input other fields
-        #     quantity_to_order = st.number_input("Quantity to Order", min_value=1, value=1)
-        #     order_number = st.text_input("Order Number", placeholder="e.g., ORD123")
-        #     supplier_name = st.text_input("Supplier Name", placeholder="e.g., Book Supplier Inc.")
-        #     status = st.selectbox("Status", ["Pending", "Shipped", "Received"])
-        #     total_cost = st.number_input("Total Cost", min_value=0.0, step=0.01)
-        #     order_date = st.date_input("Order Date")
-        #     expected_delivery_date = st.date_input("Expected Delivery Date")
+            # st.subheader("Create Purchase Order")
+            # with st.form("purchase_order_form", clear_on_submit=True):
+            #     # Select book titles from the inventory
+            #     books = fetch_books()
+            #     book_titles = [book['title'] for book in books]
+            #     book_title = st.selectbox("Select Book", book_titles if books else [])
+                
+            #     # Input other fields
+            #     quantity_to_order = st.number_input("Quantity to Order", min_value=1, value=1)
+            #     order_number = st.text_input("Order Number", placeholder="e.g., ORD123")
+            #     supplier_name = st.text_input("Supplier Name", placeholder="e.g., Book Supplier Inc.")
+            #     status = st.selectbox("Status", ["Pending", "Shipped", "Received"])
+            #     total_cost = st.number_input("Total Cost", min_value=0.0, step=0.01)
+            #     order_date = st.date_input("Order Date")
+            #     expected_delivery_date = st.date_input("Expected Delivery Date")
 
-        #     submitted = st.form_submit_button("Save Purchase Order")
-        #     if submitted:
-        #         if book_title and order_number and supplier_name:
-        #             # Match the selected book with its details
-        #             selected_book = next((book for book in books if book['title'] == book_title), None)
-        #             if selected_book:
-        #                 # Create the new order
-        #                 books_ordered = [{"title": book_title, "quantity": quantity_to_order}]
-        #                 new_order = create_order(
-        #                     order_number=order_number,
-        #                     supplier_name=supplier_name,
-        #                     books_ordered=books_ordered,
-        #                     status=status.lower(),
-        #                     total_cost=total_cost,
-        #                     order_date=str(order_date),  # Convert date to string for API
-        #                     expected_delivery_date=str(expected_delivery_date),  # Convert date to string for API
-        #                 )
-        #                 if new_order:
-        #                     st.info(f"Order for {quantity_to_order} units of '{book_title}' created successfully!")
-        #             else:
-        #                 st.error("Failed to match the selected book.")
-        #         else:
-        #             st.error("Please fill out all required fields.")
-           
+            #     submitted = st.form_submit_button("Save Purchase Order")
+            #     if submitted:
+            #         if book_title and order_number and supplier_name:
+            #             # Match the selected book with its details
+            #             selected_book = next((book for book in books if book['title'] == book_title), None)
+            #             if selected_book:
+            #                 # Create the new order
+            #                 books_ordered = [{"title": book_title, "quantity": quantity_to_order}]
+            #                 new_order = create_order(
+            #                     order_number=order_number,
+            #                     supplier_name=supplier_name,
+            #                     books_ordered=books_ordered,
+            #                     status=status.lower(),
+            #                     total_cost=total_cost,
+            #                     order_date=str(order_date),  # Convert date to string for API
+            #                     expected_delivery_date=str(expected_delivery_date),  # Convert date to string for API
+            #                 )
+            #                 if new_order:
+            #                     st.info(f"Order for {quantity_to_order} units of '{book_title}' created successfully!")
+            #             else:
+            #                 st.error("Failed to match the selected book.")
+            #         else:
+            #             st.error("Please fill out all required fields.")
+            
         cancel_button = False
         cancel_order_id = ""
 
@@ -682,15 +682,15 @@ elif page == "Orders":
                 date = ""
                 with st.expander(f"Order: {order['orderNumber']} ({order['status']})"):
                     st.write(f"**Supplier Name**: {order['supplierName']}")
-                    # st.write(f"**Books Ordered**: {order['booksOrdered']}")
+                    st.write(f"**Status**: {order['status']}")
                     st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
                     date = formatDatetime(order['orderDate'])
                     st.write(f"**Order Date**: {date}")
                     date = formatDatetime(order['expectedDeliveryDate'])
                     st.write(f"**Expected Delivery Date**: {date}")
-#                    if st.button(f"Receive Order", order['_id']):
-#                        receive_order(order_id)
+    #               if st.button(f"Receive Order", order['_id']):
+    #                  receive_order(order_id)
                     if st.button("Details", order['_id']):
                         order_details(order['_id'])
-#                        if st.button(f"Cancel Order", order['_id']):
-#                            cancel_order(order_id)
+    #               if st.button(f"Cancel Order", order['_id']):
+    #                   cancel_order(order_id)
