@@ -205,6 +205,36 @@ def cancel_order(order_id):
     else:
         st.error(f"Failed to cancel order: {response.text}")
         return False
+
+# open dialog for order details
+@st.dialog("Order Details")
+def details(order_id):
+    order = fetch_order_by_id(order_id)
+
+    if order:
+        st.write(f"**Supplier Name**: {order['supplierName']}")
+        # st.write(f"**Books Ordered**: {order['booksOrdered']}")
+        st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
+        date = formatDatetime(order['orderDate'])
+        st.write(f"**Order Date**: {date}")
+        date = formatDatetime(order['expectedDeliveryDate'])
+        st.write(f"**Expected Delivery Date**: {date}")    
+                
+        st.subheader("Books Ordered:")
+        # Display table headers with Streamlit columns
+        header_cols = st.columns([2, 2, 2, 1])
+        header_cols[0].write("Title")
+        header_cols[1].write("Author")
+        header_cols[2].write("Genre")
+        header_cols[4].write(" Order Quantity")
+        # for book in order['booksOrdered']:
+        #     book_details = fetch_book_by_id(str(book['bookId']))
+                    
+        #     cols = st.columns([2, 2, 2, 1])
+        #     cols[0].write(book_details.get("title", "N/A"))
+        #     cols[1].write(book_details.get("author", "N/A"))
+        #     cols[2].write(book_details.get("genre", "N/A"))
+        #     cols[3].write(book['quantity'])
     
 # API Fuctions for user authentication
 
@@ -576,55 +606,20 @@ if st.session_state.logged_in:
         st.subheader("Existing Purchase Orders")
         orders = fetch_orders()
         if orders:
-                for order in orders:
-                    order_id = order['_id']
-                    date = ""
-                    with st.expander(f"Order: {order['orderNumber']} ({order['status']})"):
-                        st.write(f"**Supplier Name**: {order['supplierName']}")
-                        # st.write(f"**Books Ordered**: {order['booksOrdered']}")
-                        st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
-                        date = formatDatetime(order['orderDate'])
-                        st.write(f"**Order Date**: {date}")
-                        date = formatDatetime(order['expectedDeliveryDate'])
-                        st.write(f"**Expected Delivery Date**: {date}")
-#                        if st.button(f"Receive Order", order['_id']):
-#                            receive_order(order_id)
-                        if st.button("Details", order['_id']):
-                            st.session_state.selected_order = order['_id']
+            for order in orders:
+                order_id = order['_id']
+                date = ""
+                with st.expander(f"Order: {order['orderNumber']} ({order['status']})"):
+                    st.write(f"**Supplier Name**: {order['supplierName']}")
+                    # st.write(f"**Books Ordered**: {order['booksOrdered']}")
+                    st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
+                    date = formatDatetime(order['orderDate'])
+                    st.write(f"**Order Date**: {date}")
+                    date = formatDatetime(order['expectedDeliveryDate'])
+                    st.write(f"**Expected Delivery Date**: {date}")
+#                    if st.button(f"Receive Order", order['_id']):
+#                        receive_order(order_id)
+                    if st.button("Details", order['_id']):
+                        details(order['_id'])
 #                        if st.button(f"Cancel Order", order['_id']):
 #                            cancel_order(order_id)
-                            
-                            
-        # Centralized details page for orders
-        if st.session_state.selected_order:
-            st.subheader("Order details")
-            order_id = st.session_state.selected_order
-            order = fetch_order_by_id(order_id)
-            
-            if order:
-                st.write(f"**Supplier Name**: {order['supplierName']}")
-                # st.write(f"**Books Ordered**: {order['booksOrdered']}")
-                st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
-                date = formatDatetime(order['orderDate'])
-                st.write(f"**Order Date**: {date}")
-                date = formatDatetime(order['expectedDeliveryDate'])
-                st.write(f"**Expected Delivery Date**: {date}")    
-                
-                st.subheader("Books Ordered:")
-                # Display table headers with Streamlit columns
-                header_cols = st.columns([2, 2, 2, 1])
-                header_cols[0].write("Title")
-                header_cols[1].write("Author")
-                header_cols[2].write("Genre")
-                header_cols[4].write(" Order Quantity")
-                # for book in order['booksOrdered']:
-                #     book_details = fetch_book_by_id(str(book['bookId']))
-                    
-                #     cols = st.columns([2, 2, 2, 1])
-                #     cols[0].write(book_details.get("title", "N/A"))
-                #     cols[1].write(book_details.get("author", "N/A"))
-                #     cols[2].write(book_details.get("genre", "N/A"))
-                #     cols[3].write(book['quantity'])
-                    
-            else:
-                st.write("No existing purchase orders found.")
