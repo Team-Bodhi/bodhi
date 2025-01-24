@@ -75,6 +75,16 @@ def fetch_books(genre=None, title=None, author=None):
         st.error("Failed to fetch books. Please try again.")
         return []
 
+# function to get one book by id
+def fetch_book_by_id(book_id):
+
+    response = requests.get(API_BOOKS_URL + f'/{book_id}')
+    
+    if response.status_code == 200:
+        return response.json()  
+    else:
+        st.error("Failed to fetch book. Please try again.")
+        return []
 
 # Function to add a book- Passed testing
 def add_book(title, author, genre, quantity, price, language, isbn):
@@ -155,7 +165,7 @@ def create_order(order_number, supplier_name, books_ordered, status, total_cost,
         st.error(" Invalid input or order already exists")
         return None
     else:
-        st.error("Failed to create the order. Please try again.")
+        st.error(f"Failed to create the order {order_date}. Please try again.")
         return None
   
  
@@ -173,17 +183,55 @@ def fetch_orders(supplier_name=None, status=None):
     else:
         st.error("Failed to fetch orders. Please try again.")
         return []
+    
+# Function to fetch mfr order by id
+def fetch_order_by_id(order_id):
+    response = requests.get(API_MFRORDER_URL + f'/{order_id}')
+    if response.status_code == 200:
+        return response.json()  # Returns list of orders as JSON
+    else:
+        st.error("Failed to fetch orders. Please try again.")
+        return []
 
 def cancel_order(order_id):
     response = requests.put(f"{API_BASE_URL}/cancel/{order_id}")
     if response.status_code == 200:
-
-        st.success("Order canceled successfully!")
-
+        st.success(f"Order canceled successfully!")
         return True
     else:
         st.error(f"Failed to cancel order: {response.text}")
         return False
+
+# open dialog for order details
+@st.dialog("Order Details")
+def order_details(order_id):
+    order = fetch_order_by_id(order_id)
+
+    if order:
+        print(order)
+        st.write(f"**Supplier Name**: {order['supplierName']}")
+        # st.write(f"**Books Ordered**: {order['booksOrdered']}")
+        st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
+        date = formatDatetime(order['orderDate'])
+        st.write(f"**Order Date**: {date}")
+        date = formatDatetime(order['expectedDeliveryDate'])
+        st.write(f"**Expected Delivery Date**: {date}")    
+                
+        st.subheader("Books Ordered:")
+        # Display table headers with Streamlit columns
+        header_cols = st.columns([3, 3, 3, 2])
+        header_cols[0].write("Title")
+        header_cols[1].write("Author")
+        header_cols[2].write("Genre")
+        header_cols[3].write(" Order Quantity")
+        for book in order['booksOrdered']:
+            book_details = fetch_book_by_id(str(book['bookId']))
+                    
+            cols = st.columns([2, 2, 2, 1])
+            cols[0].write(book_details.get("title", "N/A"))
+            cols[1].write(book_details.get("author", "N/A"))
+            cols[2].write(book_details.get("genre", "N/A"))
+            cols[3].write(str(book.get('quantity')))
     
 # API Fuctions for user authentication
 
@@ -256,6 +304,15 @@ if 'name' not in st.session_state:
 if 'role' not in st.session_state:
     st.session_state.role = ""
 
+# Logout Functionality
+if st.session_state.logged_in:
+    if st.sidebar.button("Logout"):
+        st.session_state.logged_in = False
+        st.session_state.name = ""
+        st.session_state.role = ""
+        st.session_state['refresh'] = not st.session_state.get('refresh', False)
+
+
 
 # Home Page (Always Accessible)
 if page == "Home":
@@ -273,51 +330,27 @@ if page == "Home":
     """)
     
 # Login Section
-
-# Function to handle login
-def handle_login():
-    role = validate_login_api(st.session_state.temp_username, st.session_state.temp_password)
-    if role:
-        # update the session state for successful login
-        st.session_state.logged_in = True
-        st.session_state.username = st.session_state.temp_username
-        st.session_state.role = role
-        # Set a flag to clear fields on rerun
-        st.session_state.clear_fields = True
-        st.rerun()
-    else:
-        st.error("Invalid username or password. Please try again.")
-        
-
-# Initialize session state variables
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "temp_username" not in st.session_state:
-    st.session_state.temp_username = ""
-if "temp_password" not in st.session_state:
-    st.session_state.temp_password = ""
-if "clear_fields" not in st.session_state:
-    st.session_state.clear_fields = False
- 
-# Login Section
 if not st.session_state.logged_in:
     st.divider()
     st.subheader("🔐 Login")
-    # Clear fields if the flag is set
-    if st.session_state.clear_fields:
-        st.session_state.temp_username = ""
-        st.session_state.temp_password = ""
-        st.session_state.clear_fields = False  # Reset the flag
-    # Temporary variables for login inputs
-    username = st.text_input("Username", key="temp_username")
-    password = st.text_input("Password", type="password", key="temp_password")
+    username = st.text_input("Username", key="login_username")
+    password = st.text_input("Password", type="password", key="login_password")
     if st.button("Login"):
-        handle_login()
-else:
-    st.success(f"Welcome, {st.session_state.username}!")
-    if st.button("Logout"):
-        st.session_state.logged_in = False
-        st.rerun()
+        # call the validate login function
+        role = validate_login_api(username, password)
+        if role:
+            # update the session state for successful login
+            st.session_state.logged_in = True
+            st.session_state.username = username
+            st.session_state.role = role
+            # display a welcome message
+            st.success(f"Welcome, {username}!")
+            # Reset the login fields
+            st.session_state.login_username = ""
+            st.session_state.login_password = ""
+        else:
+            st.error("Invalid username or password. Please try again.")
+
          
             
 # Create account section
@@ -338,25 +371,12 @@ if not st.session_state.logged_in and page == "Home":
     # Initialize session state for role
     if 'role' not in st.session_state or st.session_state.role not in ["staff", "manager"]:
         st.session_state.role = "staff"  # Default to 'staff'
-        
-    # Add a flag to reset fields after success
-    if "reset_create_account_fields" not in st.session_state:
-        st.session_state.reset_create_account_fields = False
     
     
     # Only show the expander if "show_create_account" is True
     if st.session_state.show_create_account:
         with st.expander("Create a New Account", expanded=True):
-            # Reset fields if the flag is set
-            if st.session_state.reset_create_account_fields:
-                st.session_state.new_username = ""
-                st.session_state.new_password = ""
-                st.session_state.first_name = ""
-                st.session_state.last_name = ""
-                st.session_state.role = "staff"
-                st.session_state.reset_create_account_fields = False
-                
-            # Input fields for creating new account
+            # Input fields for creating a new account
             new_username = st.text_input("New Username", key="new_username")
             new_password = st.text_input("New Password", type="password", key="new_password")
             first_name = st.text_input("First Name", key="first_name")
@@ -367,118 +387,108 @@ if not st.session_state.logged_in and page == "Home":
                 if new_username and new_password and first_name and last_name:
                     response = add_user_api(new_username, new_password, first_name, last_name, role)
                     st.info(response)
-                    
-                    # set the reset flag to clear fields
-                    st.session_state.reset_create_account_fields = True
+    
+                    # Reset form fields and collapse after success
+                    st.session_state.new_username = ""
+                    st.session_state.new_password = ""
+                    st.session_state.first_name = ""
+                    st.session_state.last_name = ""
+                    st.session_state.role = "staff"  # Reset to default
                     st.session_state.show_create_account = False
-                    st.rerun()
-          
                 else:
                     st.warning("All fields are required to create an account.")
     
 
         
 # Protected Pages
-if st.session_state.logged_in and page == "Inventory Management":
-   # Inventory Management Page
-   st.title("📦 Inventory Management")
-   st.subheader("Manage Your Rare Book Collection")
-   st.write("""
-   Welcome to the **Inventory Management** section. Here you can:
-   - View and search our current inventory of rare books.
-   - Add new books to the collection.
-   - Update book information, including stock levels and prices.
-   - Remove books that are no longer available.
-   """)
-   
-   # Reset flags for refreshing inventory and clearing selected book
-   if "refresh_inventory" not in st.session_state:
-       st.session_state.refresh_inventory = False
-   if "selected_book" not in st.session_state:
-       st.session_state.selected_book = None
+if st.session_state.logged_in:
+    # Inventory Management Page
+    if page == "Inventory Management":
+        st.title("📦 Inventory Management")
+        st.subheader("Manage Your Rare Book Collection")
+        st.write("""
+        Welcome to the **Inventory Management** section. Here you can:
+        - View and search our current inventory of rare books.
+        - Add new books to the collection.
+        - Update book information, including stock levels and prices.
+        - Remove books that are no longer available.
+        """)
     
+        # Track the selected book for editing
+        if "selected_book" not in st.session_state:
+            st.session_state.selected_book = None
             
-    # Add New Book Button and Form
-   with st.expander("➕ Add New Book"):
-       with st.form("add_book_form", clear_on_submit=True):
-          new_title = st.text_input("Book Title")
-          new_author = st.text_input("Author")
-          new_genre = st.selectbox("Genre", ["Fiction", "Non-Fiction", "Science", "Biography"])
-          new_quantity = st.number_input("Quantity", min_value=1, value=1)
-          new_price = st.number_input("Price", min_value=0.0, value=1.0)
-          new_language = st.text_input("Language")
-          new_isbn = st.text_input("ISBN")
-          add_submitted = st.form_submit_button("Add Book")
-          if add_submitted:
-              add_book(new_title, new_author, new_genre, new_quantity, new_price, new_language, new_isbn)
+        # Add New Book Button and Form
+        with st.expander("➕ Add New Book"):
+            with st.form("add_book_form", clear_on_submit=True):
+                new_title = st.text_input("Book Title")
+                new_author = st.text_input("Author")
+                new_genre = st.selectbox("Genre", ["Fiction", "Non-Fiction", "Science", "Biography"])
+                new_quantity = st.number_input("Quantity", min_value=1, value=1)
+                new_price = st.number_input("Price", min_value=0.0, value=1.0)
+                new_language = st.text_input("Language")
+                new_isbn = st.text_input("ISBN")
+                add_submitted = st.form_submit_button("Add Book")
+                if add_submitted:
+                    add_book(new_title, new_author, new_genre, new_quantity, new_price, new_language, new_isbn)
         
-   # Filters for the search
-   st.subheader("Filter Inventory")
-   col1, col2, col3 = st.columns(3)
+        # Filters for the search
+        st.subheader("Filter Inventory")
+        col1, col2, col3 = st.columns(3)
     
-   with col1:
-       filter_by_genre = st.checkbox("Filter by Genre", key="filter_by_genre")
-       selected_genre = st.text_input("Genre", key="selected_genre") if filter_by_genre else None
+        with col1:
+            filter_by_genre = st.checkbox("Filter by Genre")
+            selected_genre = st.text_input("Genre") if filter_by_genre else None
     
-   with col2:
-       filter_by_author = st.checkbox("Filter by Author", key="filter_by_author")
-       selected_author = st.text_input("Author", key="selected_author") if filter_by_author else None
+        with col2:
+            filter_by_author = st.checkbox("Filter by Author")
+            selected_author = st.text_input("Author") if filter_by_author else None
     
-   with col3:
-       filter_by_title = st.checkbox("Filter by Title", key="filter_by_title")
-       selected_title = st.text_input("Title", key="selected_title") if filter_by_title else None
+        with col3:
+            filter_by_title = st.checkbox("Filter by Title")
+            selected_title = st.text_input("Title") if filter_by_title else None
     
-   # Update fetch_books function based on selected filters
-   filters = {
-       "genre": selected_genre if filter_by_genre else None,
-       "author": selected_author if filter_by_author else None,
-       "title": selected_title if filter_by_title else None,
-   }
+        # Update fetch_books function based on selected filters
+        filters = {
+            "genre": selected_genre if filter_by_genre else None,
+            "author": selected_author if filter_by_author else None,
+            "title": selected_title if filter_by_title else None,
+        }
 
-   # Fetch and display the books using the API
-   books = fetch_books(**{k: v for k, v in filters.items() if v})
-   
-   # Ensure only one block renders the inventory list
-   if "refresh_inventory" not in st.session_state:
-       st.session_state.refresh_inventory = False
-       
-   # Refresh inventory list after deletion
-   if st.session_state.refresh_inventory:
-       books = fetch_books()
-       st.session_state.refresh_inventory = False
-        
-   # Display books in a table format
-   st.subheader("Inventory List")
-   if books:
-       # Display table headers with Streamlit columns
-       header_cols = st.columns([2, 2, 2, 1, 1, 2])
-       header_cols[0].write("Title")
-       header_cols[1].write("Author")
-       header_cols[2].write("Genre")
-       header_cols[3].write("Stock")
-       header_cols[4].write("Price")
-       header_cols[5].write("Actions")
-       
-       # Display inventory rows
-       for book in books:
-           cols = st.columns([2, 2, 2, 1, 1, 2])
-           cols[0].write(book["title"])
-           cols[1].write(book["author"])
-           cols[2].write(book["genre"])
-           
+        # Fetch and display the books using the API
+        books = fetch_books(**{k: v for k, v in filters.items() if v is not None})
+        st.subheader("Inventory List")
+
+        if books:
+            # Display table headers with Streamlit columns
+            header_cols = st.columns([2, 2, 2, 1, 1, 2])
+            header_cols[0].write("Title")
+            header_cols[1].write("Author")
+            header_cols[2].write("Genre")
+            header_cols[3].write("Stock")
+            header_cols[4].write("Price")
+            header_cols[5].write("Actions")
+
+
+            # Display inventory with "Edit" and "Delete" actions
+            for book in books:
+                cols = st.columns([2, 2, 2, 1, 1, 2])
+                cols[0].write(book.get("title", "N/A"))
+                cols[1].write(book.get("author", "N/A"))
+                cols[2].write(book.get("genre", "N/A"))
     
-           quantity = book.get("quantity", 0)
-           # Highlight stock if it's low
-           if quantity < 20:
-               cols[3].markdown(f"<span style='color: red;'>{quantity}</span>", unsafe_allow_html=True)
-           else:
-               cols[3].write(quantity)
+                quantity = book.get("quantity", 0)
+                # Highlight stock if it's low
+                if quantity < 20:
+                    cols[3].markdown(f"<span style='color: red;'>{quantity}</span>", unsafe_allow_html=True)
+                else:
+                    cols[3].write(quantity)
     
-           cols[4].write(f"${book['price']:.2f}")
+                cols[4].write(f"${book.get('price', 0):.2f}")
     
-           # Add "Edit" and "Delete" buttons
-           if cols[5].button("Edit", key=f"edit_{book['_id']}"):
-               st.session_state.selected_book = book
+                # Add "Edit" and "Delete" buttons
+                if cols[5].button("Edit", key=f"edit_{book['_id']}"):
+                    st.session_state.selected_book = book
     
            if cols[5].button("Delete", key=f"delete_{book['_id']}"):
                delete_book(book["_id"])
@@ -613,73 +623,74 @@ elif page == "Orders":
     - Ensure a steady supply of rare books for our customers.
     """)
 
-    # Section: Create Purchase Order Form
-    # Needs testing
-    st.subheader("Create Purchase Order")
-    with st.form("purchase_order_form", clear_on_submit=True):
-        # Select book titles from the inventory
-        books = fetch_books()
-        book_titles = [book['title'] for book in books]
-        book_title = st.selectbox("Select Book", book_titles if books else [])
+        # Section: Create Purchase Order Form (needs to be its own section to accommodate multiple books)
+            
+        
+        # st.subheader("Create Purchase Order")
+        # with st.form("purchase_order_form", clear_on_submit=True):
+        #     # Select book titles from the inventory
+        #     books = fetch_books()
+        #     book_titles = [book['title'] for book in books]
+        #     book_title = st.selectbox("Select Book", book_titles if books else [])
+            
+        #     # Input other fields
+        #     quantity_to_order = st.number_input("Quantity to Order", min_value=1, value=1)
+        #     order_number = st.text_input("Order Number", placeholder="e.g., ORD123")
+        #     supplier_name = st.text_input("Supplier Name", placeholder="e.g., Book Supplier Inc.")
+        #     status = st.selectbox("Status", ["Pending", "Shipped", "Received"])
+        #     total_cost = st.number_input("Total Cost", min_value=0.0, step=0.01)
+        #     order_date = st.date_input("Order Date")
+        #     expected_delivery_date = st.date_input("Expected Delivery Date")
 
-        # Input other fields
-        quantity_to_order = st.number_input("Quantity to Order", min_value=1, value=1)
-        order_number = st.text_input("Order Number", placeholder="e.g., ORD123")
-        supplier_name = st.text_input("Supplier Name", placeholder="e.g., Book Supplier Inc.")
-        status = st.selectbox("Status", ["Pending", "Confirmed", "Shipped"])
-        total_cost = st.number_input("Total Cost", min_value=0.0, step=0.01)
-        order_date = st.date_input("Order Date")
-        expected_delivery_date = st.date_input("Expected Delivery Date")
-
-        submitted = st.form_submit_button("Save Purchase Order")
-        if submitted:
-            if book_title and order_number and supplier_name:
-                # Match the selected book with its details
-                selected_book = next((book for book in books if book['title'] == book_title), None)
-                if selected_book:
-                    # Create the new order
-                    books_ordered = [{"title": book_title, "quantity": quantity_to_order}]
-                    new_order = create_order(
-                        order_number=order_number,
-                        supplier_name=supplier_name,
-                        books_ordered=books_ordered,
-                        status=status,
-                        total_cost=total_cost,
-                        order_date=str(order_date),  # Convert date to string for API
-                        expected_delivery_date=str(expected_delivery_date),  # Convert date to string for API
-                    )
-                    if new_order:
-                        st.info(f"Order for {quantity_to_order} units of '{book_title}' created successfully!")
-                    else:
-                        st.error("Failed to match the selected book.")
-                else:
-                    st.error("Please fill out all required fields.")
-
+        #     submitted = st.form_submit_button("Save Purchase Order")
+        #     if submitted:
+        #         if book_title and order_number and supplier_name:
+        #             # Match the selected book with its details
+        #             selected_book = next((book for book in books if book['title'] == book_title), None)
+        #             if selected_book:
+        #                 # Create the new order
+        #                 books_ordered = [{"title": book_title, "quantity": quantity_to_order}]
+        #                 new_order = create_order(
+        #                     order_number=order_number,
+        #                     supplier_name=supplier_name,
+        #                     books_ordered=books_ordered,
+        #                     status=status.lower(),
+        #                     total_cost=total_cost,
+        #                     order_date=str(order_date),  # Convert date to string for API
+        #                     expected_delivery_date=str(expected_delivery_date),  # Convert date to string for API
+        #                 )
+        #                 if new_order:
+        #                     st.info(f"Order for {quantity_to_order} units of '{book_title}' created successfully!")
+        #             else:
+        #                 st.error("Failed to match the selected book.")
+        #         else:
+        #             st.error("Please fill out all required fields.")
            
-
         cancel_button = False
         cancel_order_id = ""
+
+        # if order details not selected, hide this state
+        if "selected_order" not in st.session_state:
+            st.session_state.selected_order = None
 
         # Section: View Existing Purchase Orders
         st.subheader("Existing Purchase Orders")
         orders = fetch_orders()
         if orders:
-
             for order in orders:
                 order_id = order['_id']
-                date = ''
+                date = ""
                 with st.expander(f"Order: {order['orderNumber']} ({order['status']})"):
                     st.write(f"**Supplier Name**: {order['supplierName']}")
-                    st.write(f"**Books Ordered**: {order['booksOrdered']}")
+                    # st.write(f"**Books Ordered**: {order['booksOrdered']}")
                     st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
-                    date = formatDate(order['orderDate'])
+                    date = formatDatetime(order['orderDate'])
                     st.write(f"**Order Date**: {date}")
-                    date = formatDate(order['expectedDeliveryDate'])
+                    date = formatDatetime(order['expectedDeliveryDate'])
                     st.write(f"**Expected Delivery Date**: {date}")
-                    if st.button(f"Cancel Order", order['_id']):
-                        cancel_order(order_id)
-        else:
-            st.write("No existing purchase orders found.")
-
-                
-
+#                    if st.button(f"Receive Order", order['_id']):
+#                        receive_order(order_id)
+                    if st.button("Details", order['_id']):
+                        order_details(order['_id'])
+#                        if st.button(f"Cancel Order", order['_id']):
+#                            cancel_order(order_id)
