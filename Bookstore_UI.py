@@ -532,7 +532,72 @@ elif page == "Sales Records":
     - Analyze trends and performance over time.
     """)
 
+    # Generate Sales Report
+    st.subheader("Generate Sales Report")
+    with st.form("sales_report_form"):
+         start_date = st.date_input("Start Date")
+         end_date = st.date_input("End Date")
+         report_type = st.selectbox("Report Type", ["Summary", "Detailed"])
+         submitted = st.form_submit_button("Generate Report")
 
+         if submitted:
+             try:
+                 report_params = {
+                     "start_date": str(start_date),
+                     "end_date": str(end_date),
+                     "type": report_type,
+                 }
+                 report_response = requests.get(f"{API_BASE_URL}/sales/report", params=report_params)
+                 if report_response.status_code == 200:
+                     report_data = report_response.json()
+                     st.write("### Sales Report")
+                     st.dataframe(report_data)
+                 else:
+                     st.error(f"Failed to generate report: {report_response.text}")
+             except requests.exceptions.RequestException as e:
+                 st.error(f"Error generating sales report: {e}")
+
+    # Fetch and Display Sales Records
+    st.subheader("Sales Records")
+    try:
+        response = requests.get(f"{API_BASE_URL}/sales")  # Replace with the correct endpoint
+        if response.status_code == 200:
+            sales_data = response.json()
+            st.dataframe(sales_data)  # Display sales records in a tabular format
+        else:
+            st.write("No sales records found or failed to fetch data.")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching sales data: {e}")
+
+    
+    # Sales Trends Analysis
+    st.subheader("Sales Trends and Analysis")
+    trend_options = ["Sales Over Time", "Top Selling Books", "Revenue by Genre"]
+    selected_trend = st.selectbox("Select Trend to Analyze", trend_options)
+
+    try:
+        if selected_trend == "Sales Over Time":
+            trend_data = requests.get(f"{API_BASE_URL}/sales/trends/time").json()
+            if trend_data:
+                st.line_chart(trend_data)
+            else:
+                st.write("No data available for this trend.")
+
+        elif selected_trend == "Top Selling Books":
+            top_books_data = requests.get(f"{API_BASE_URL}/sales/trends/top-books").json()
+            if top_books_data:
+                st.bar_chart(top_books_data)
+            else:
+                st.write("No data available for this trend.")
+
+        elif selected_trend == "Revenue by Genre":
+            revenue_data = requests.get(f"{API_BASE_URL}/sales/trends/revenue-by-genre").json()
+            if revenue_data:
+                st.bar_chart(revenue_data)
+            else:
+                st.write("No data available for this trend.")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching trend data: {e}")
 
 
 
