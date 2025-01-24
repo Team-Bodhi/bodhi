@@ -20,6 +20,8 @@ if 'current_book' not in st.session_state:
     st.session_state.current_book = None
 if 'page' not in st.session_state:
     st.session_state.page = 'main'
+if 'checkout_stage' not in st.session_state:
+    st.session_state.checkout_stage = 'cart'
 
 # API endpoints
 API_BASE_URL = st.secrets["api"]["base_url"]
@@ -41,8 +43,8 @@ def fetch_books():
 
 def add_to_cart(book):
     cart_item = {
-        "book_id": book["_id"],
-        "title": book["title"],
+        "bookId": book["_id"],
+        "title": book["title"],  # For display purposes
         "price": book.get("price", 0),
         "quantity": 1
     }
@@ -53,20 +55,41 @@ def remove_from_cart(index):
     removed_item = st.session_state.cart.pop(index)
     st.session_state.total_amount -= removed_item["price"] * removed_item["quantity"]
 
-def submit_order():
+def submit_order(shipping_info, payment_method):
+    # Format the order data according to the sale schema
     order_data = {
-        "items": st.session_state.cart,
-        "total_amount": st.session_state.total_amount,
-        "order_date": datetime.now().isoformat(),
-        "status": "pending"
+        "type": "online",
+        "bookOrdered": [
+            {
+                "bookId": item["bookId"],
+                "quantity": item["quantity"],
+                "price": item["price"]
+            } for item in st.session_state.cart
+        ],
+        "status": "pending",
+        "saleDate": datetime.now().isoformat(),
+        "totalPrice": st.session_state.total_amount,
+        "paymentMethod": payment_method,
+        "shippingAddress": {
+            "street": shipping_info["street"],
+            "city": shipping_info["city"],
+            "state": shipping_info["state"],
+            "zipCode": shipping_info["zipCode"]
+        }
     }
+    
     try:
         response = requests.post(f"{API_BASE_URL}/sales", json=order_data)
-        if response.status_code == 200:
+        if response.status_code in [200, 201]:
             st.session_state.cart = []
             st.session_state.total_amount = 0.0
+            st.session_state.checkout_stage = 'cart'
             return True
-    except:
+        else:
+            print(f"Error: {response.status_code}", response.json())
+            return False
+    except Exception as e:
+        print(f"Exception: {str(e)}")
         return False
 
 def format_date(date_str):
@@ -84,6 +107,57 @@ def show_book_details(book):
 def show_book_grid():
     st.session_state.page = 'main'
     st.rerun()
+
+def render_checkout_form():
+    # Back button at the top
+    if st.button("← Back to Shopping"):
+        st.session_state.page = 'main'
+        st.rerun()
+    
+    st.title("Checkout")
+    
+    # Shipping Information
+    st.subheader("Shipping Address")
+    col1, col2 = st.columns(2)
+    with col1:
+        street = st.text_input("Street Address")
+        city = st.text_input("City")
+    with col2:
+        state = st.text_input("State")
+        zip_code = st.text_input("ZIP Code")
+    
+    # Payment Method
+    st.subheader("Payment Method")
+    payment_method = st.selectbox(
+        "Select Payment Method",
+        ["credit", "debit"]
+    )
+    
+    # Order Summary
+    st.subheader("Order Summary")
+    for item in st.session_state.cart:
+        st.write(f"{item['title']} - ${item['price']:.2f} x {item['quantity']}")
+    st.write("---")
+    st.write(f"**Total: ${st.session_state.total_amount:.2f}**")
+    
+    # Submit Order
+    if st.button("Place Order"):
+        if not all([street, city, state, zip_code]):
+            st.error("Please fill in all shipping information.")
+            return
+        
+        shipping_info = {
+            "street": street,
+            "city": city,
+            "state": state,
+            "zipCode": zip_code
+        }
+        
+        if submit_order(shipping_info, payment_method):
+            st.success("Order placed successfully!")
+            st.session_state.page = 'main'
+        else:
+            st.error("Failed to place order. Please try again.")
 
 def render_shopping_cart():
     with st.sidebar:
@@ -105,11 +179,9 @@ def render_shopping_cart():
             st.write("---")
             st.write(f"Total: ${st.session_state.total_amount:.2f}")
             
-            if st.button("Checkout"):
-                if submit_order():
-                    st.success("Order placed successfully!")
-                else:
-                    st.error("Failed to place order. Please try again.")
+            if st.button("Proceed to Checkout"):
+                st.session_state.page = 'checkout'
+                st.rerun()
 
 def render_book_details():
     book = st.session_state.current_book
@@ -200,12 +272,15 @@ def render_main_page():
 # App Layout
 st.set_page_config(layout="wide", page_title="Bodhi Bookstore")
 
-# Render shopping cart sidebar
-render_shopping_cart()
+# Render shopping cart sidebar (except on checkout page)
+if st.session_state.page != 'checkout':
+    render_shopping_cart()
 
 # Render main content based on current page
 if st.session_state.page == 'details' and st.session_state.current_book:
     render_book_details()
+elif st.session_state.page == 'checkout':
+    render_checkout_form()
 else:
     render_main_page()
 

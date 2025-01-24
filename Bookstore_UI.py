@@ -490,64 +490,138 @@ if st.session_state.logged_in:
                 if cols[5].button("Edit", key=f"edit_{book['_id']}"):
                     st.session_state.selected_book = book
     
-                if cols[5].button("Delete", key=f"delete_{book['_id']}"):
-                    delete_book(book["_id"])
-                    st.success(f"Book '{book['title']}' deleted successfully.")
-                    st.query.params(refresh="true")
+           if cols[5].button("Delete", key=f"delete_{book['_id']}"):
+               delete_book(book["_id"])
+               st.success(f"Book '{book['title']}' deleted successfully.")
+               st.session_state.refresh_inventory = True
+               st.rerun()
+        
 
-        # Centralized Update Form for Editing a Book
-        if st.session_state.selected_book:
-            st.subheader("Edit Book")
-            book = st.session_state.selected_book
-            with st.form("update_book_form", clear_on_submit=True):
-                new_title = st.text_input("Book Title", value=book["title"])
-                new_author = st.text_input("Author", value=book["author"])
-                new_genre = st.text_input("Genre", value=book["genre"])
-                new_quantity = st.number_input("Quantity", min_value=0, value=book["quantity"])
-                new_price = st.number_input("Price", min_value=0.0, value=book["price"])
-                new_language = st.text_input("Language", value=book.get("language", ""))
-                new_isbn = st.text_input("ISBN", value=book.get("isbn", ""))
+        
+   # Display the edit form in the sidebar if a book is selected
+   if st.session_state.selected_book:
+       book = st.session_state.selected_book
+       with st.sidebar:
+           st.subheader("Edit Book")
+           with st.form("update_book_form", clear_on_submit=True):
+               new_title = st.text_input("Book Title", value=book["title"])
+               new_author = st.text_input("Author", value=book["author"])
+               new_genre = st.text_input("Genre", value=book["genre"])
+               new_quantity = st.number_input("Quantity", min_value=0, value=book["quantity"])
+               new_price = st.number_input("Price", min_value=0.0, value=book["price"])
+               new_language = st.text_input("Language", value=book.get("language", ""))
+               new_isbn = st.text_input("ISBN", value=book.get("isbn", ""))
+        
+               update_submitted = st.form_submit_button("Update Book")
+               if update_submitted:
+                   success = update_book(
+                       book["_id"],
+                       new_title,
+                       new_author,
+                       new_genre,
+                       int(new_quantity),
+                       float(new_price),
+                       new_language,
+                       new_isbn,
+                   )
+                   if success:
+                       st.success(f"Book '{new_title}' updated successfully!")
+                       # Clear the selected book and refresh the books
+                       st.session_state.selected_book = None
+                       st.session_state.refresh_inventory = True
+                       st.rerun()
+        
+# Sales Records Page
+elif page == "Sales Records":
+    st.title("📊 Sales Records")
+    st.subheader("View and Analyze Sales Data")
+    st.write("""
+    Welcome to the **Sales Records** section. Here you can:
+    - View detailed sales records of rare books.
+    - Generate sales reports.
+    - Analyze trends and performance over time.
+    """)
+
+    # Generate Sales Report
+    st.subheader("Generate Sales Report")
+    with st.form("sales_report_form"):
+         start_date = st.date_input("Start Date")
+         end_date = st.date_input("End Date")
+         report_type = st.selectbox("Report Type", ["Summary", "Detailed"])
+         submitted = st.form_submit_button("Generate Report")
+
+         if submitted:
+             try:
+                 report_params = {
+                     "start_date": str(start_date),
+                     "end_date": str(end_date),
+                     "type": report_type,
+                 }
+                 report_response = requests.get(f"{API_BASE_URL}/sales/report", params=report_params)
+                 if report_response.status_code == 200:
+                     report_data = report_response.json()
+                     st.write("### Sales Report")
+                     st.dataframe(report_data)
+                 else:
+                     st.error(f"Failed to generate report: {report_response.text}")
+             except requests.exceptions.RequestException as e:
+                 st.error(f"Error generating sales report: {e}")
+
+    # Fetch and Display Sales Records
+    st.subheader("Sales Records")
+    try:
+        response = requests.get(f"{API_BASE_URL}/sales")  # Replace with the correct endpoint
+        if response.status_code == 200:
+            sales_data = response.json()
+            st.dataframe(sales_data)  # Display sales records in a tabular format
+        else:
+            st.write("No sales records found or failed to fetch data.")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching sales data: {e}")
+
     
-                update_submitted = st.form_submit_button("Update Book")
-                if update_submitted:
-                    success = update_book(
-                        book["_id"],
-                        new_title,
-                        new_author,
-                        new_genre,
-                        int(new_quantity),
-                        float(new_price),
-                        new_language,
-                        new_isbn,
-                    )
-                    if success:
-                        # Clear the selected book and refresh the books
-                        st.session_state.selected_book = None
-                        # Force page refresh
-                        st.query.params(refresh="true")  
-    
-         
-    # Sales Records Page
-    elif page == "Sales Records":
-        st.title("📊 Sales Records")
-        st.subheader("View and Analyze Sales Data")
-        st.write("""
-        Welcome to the **Sales Records** section. Here you can:
-        - View detailed sales records of rare books.
-        - Generate sales reports.
-        - Analyze trends and performance over time.
-        """)
-   
-    # Orders Page
-    elif page == "Orders":
-        st.title("🛒 Orders")
-        st.subheader("Manage Purchase Orders")
-        st.write("""
-        Welcome to the **Orders** section. Here you can:
-        - View and manage existing purchase orders.
-        - Create new orders for books running low on stock.
-        - Ensure a steady supply of rare books for our customers.
-        """)
+    # Sales Trends Analysis
+    st.subheader("Sales Trends and Analysis")
+    trend_options = ["Sales Over Time", "Top Selling Books", "Revenue by Genre"]
+    selected_trend = st.selectbox("Select Trend to Analyze", trend_options)
+
+    try:
+        if selected_trend == "Sales Over Time":
+            trend_data = requests.get(f"{API_BASE_URL}/sales/trends/time").json()
+            if trend_data:
+                st.line_chart(trend_data)
+            else:
+                st.write("No data available for this trend.")
+
+        elif selected_trend == "Top Selling Books":
+            top_books_data = requests.get(f"{API_BASE_URL}/sales/trends/top-books").json()
+            if top_books_data:
+                st.bar_chart(top_books_data)
+            else:
+                st.write("No data available for this trend.")
+
+        elif selected_trend == "Revenue by Genre":
+            revenue_data = requests.get(f"{API_BASE_URL}/sales/trends/revenue-by-genre").json()
+            if revenue_data:
+                st.bar_chart(revenue_data)
+            else:
+                st.write("No data available for this trend.")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching trend data: {e}")
+
+
+
+
+# Orders Page
+elif page == "Orders":
+    st.title("🛒 Orders")
+    st.subheader("Manage Purchase Orders")
+    st.write("""
+    Welcome to the **Orders** section. Here you can:
+    - View and manage existing purchase orders.
+    - Create new orders for books running low on stock.
+    - Ensure a steady supply of rare books for our customers.
+    """)
 
         # Section: Create Purchase Order Form (needs to be its own section to accommodate multiple books)
             
