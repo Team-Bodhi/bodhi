@@ -77,10 +77,8 @@ def fetch_books(genre=None, title=None, author=None):
 
 # function to get one book by id
 def fetch_book_by_id(book_id):
-    params = { book_id }
-   
 
-    response = requests.get(API_BOOKS_URL, params=params)
+    response = requests.get(API_BOOKS_URL + f'/{book_id}')
     
     if response.status_code == 200:
         return response.json()  
@@ -187,10 +185,8 @@ def fetch_orders(supplier_name=None, status=None):
         return []
     
 # Function to fetch mfr order by id
-def fetch_order_by_id(order_d):
-    params = { order_id }
-        
-    response = requests.get(API_MFRORDER_URL, params=params)
+def fetch_order_by_id(order_id):
+    response = requests.get(API_MFRORDER_URL + f'/{order_id}')
     if response.status_code == 200:
         return response.json()  # Returns list of orders as JSON
     else:
@@ -208,10 +204,11 @@ def cancel_order(order_id):
 
 # open dialog for order details
 @st.dialog("Order Details")
-def details(order_id):
+def order_details(order_id):
     order = fetch_order_by_id(order_id)
 
     if order:
+        print(order)
         st.write(f"**Supplier Name**: {order['supplierName']}")
         # st.write(f"**Books Ordered**: {order['booksOrdered']}")
         st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
@@ -222,19 +219,19 @@ def details(order_id):
                 
         st.subheader("Books Ordered:")
         # Display table headers with Streamlit columns
-        header_cols = st.columns([2, 2, 2, 1])
+        header_cols = st.columns([3, 3, 3, 2])
         header_cols[0].write("Title")
         header_cols[1].write("Author")
         header_cols[2].write("Genre")
-        header_cols[4].write(" Order Quantity")
-        # for book in order['booksOrdered']:
-        #     book_details = fetch_book_by_id(str(book['bookId']))
+        header_cols[3].write(" Order Quantity")
+        for book in order['booksOrdered']:
+            book_details = fetch_book_by_id(str(book['bookId']))
                     
-        #     cols = st.columns([2, 2, 2, 1])
-        #     cols[0].write(book_details.get("title", "N/A"))
-        #     cols[1].write(book_details.get("author", "N/A"))
-        #     cols[2].write(book_details.get("genre", "N/A"))
-        #     cols[3].write(book['quantity'])
+            cols = st.columns([2, 2, 2, 1])
+            cols[0].write(book_details.get("title", "N/A"))
+            cols[1].write(book_details.get("author", "N/A"))
+            cols[2].write(book_details.get("genre", "N/A"))
+            cols[3].write(str(book.get('quantity')))
     
 # API Fuctions for user authentication
 
@@ -620,6 +617,6 @@ if st.session_state.logged_in:
 #                    if st.button(f"Receive Order", order['_id']):
 #                        receive_order(order_id)
                     if st.button("Details", order['_id']):
-                        details(order['_id'])
+                        order_details(order['_id'])
 #                        if st.button(f"Cancel Order", order['_id']):
 #                            cancel_order(order_id)
