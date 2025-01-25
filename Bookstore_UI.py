@@ -541,43 +541,61 @@ if st.session_state.logged_in:
         - Generate sales reports.
         - Analyze trends and performance over time.
         """)
-
+        
         # Generate Sales Report
         st.subheader("Generate Sales Report")
         with st.form("sales_report_form"):
+            # Input fields for sales report parameters
             start_date = st.date_input("Start Date")
             end_date = st.date_input("End Date")
+            book_title = st.text_input("Book Title (optional)")
+            genre = st.text_input("Genre (optional)")
+            status = st.selectbox("Sale Status (optional)", ["", "pending", "shipped", "received", "canceled"])
+            sale_type = st.selectbox("Sale Type (optional)", ["", "instore", "online"])
             report_type = st.selectbox("Report Type", ["Summary", "Detailed"])
+    
+            # Submit button
             submitted = st.form_submit_button("Generate Report")
 
             if submitted:
                 try:
+                    # Construct query parameters based on user input
                     report_params = {
-                        "start_date": str(start_date),
-                        "end_date": str(end_date),
-                        "type": report_type,
+                        "startDate": str(start_date) if start_date else None,
+                        "endDate": str(end_date) if end_date else None,
+                        "bookTitle": book_title if book_title else None,
+                        "genre": genre if genre else None,
+                        "status": status if status else None,
+                        "type": sale_type if sale_type else None,
                     }
-                    report_response = requests.get(f"{API_BASE_URL}/sales/report", params=report_params)
-                    if report_response.status_code == 200:
-                        report_data = report_response.json()
+                    # Filter out None values
+                    report_params = {k: v for k, v in report_params.items() if v}
+
+                    # Send request to API
+                    response = requests.get(f"{API_BASE_URL}/sales", params=report_params)
+            
+                    # Check the API response
+                    if response.status_code == 200:
+                        report_data = response.json()
                         st.write("### Sales Report")
-                        st.dataframe(report_data)
+                        st.dataframe(report_data)  # Display the report data in a table
                     else:
-                        st.error(f"Failed to generate report: {report_response.text}")
+                        st.error(f"Failed to generate report: {response.text}")
                 except requests.exceptions.RequestException as e:
                     st.error(f"Error generating sales report: {e}")
 
-        # Fetch and Display Sales Records
-        st.subheader("Sales Records")
-        try:
-            response = requests.get(f"{API_BASE_URL}/sales")  # Replace with the correct endpoint
-            if response.status_code == 200:
-                sales_data = response.json()
-                st.dataframe(sales_data)  # Display sales records in a tabular format
-            else:
-                st.write("No sales records found or failed to fetch data.")
-        except requests.exceptions.RequestException as e:
-            st.error(f"Error fetching sales data: {e}")
+
+        # Fetch and Display All Sales Records
+#        st.subheader("All Sales Records")
+#        try:
+#            response = requests.get(f"{API_BASE_URL}/sales")  # Replace with the correct endpoint
+#            if response.status_code == 200:
+#                sales_data = response.json()
+#                st.dataframe(sales_data)  # Display sales records in a tabular format
+#            else:
+#                st.write("No sales records found or failed to fetch data.")
+#        except requests.exceptions.RequestException as e:
+#            st.error(f"Error fetching sales data: {e}")
 
         
         # Sales Trends Analysis
