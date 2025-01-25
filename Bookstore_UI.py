@@ -143,30 +143,50 @@ def delete_book(book_id):
 
 #Function for creating orders 
 #FIXME requires testing
-def create_order(order_number, supplier_name, books_ordered, status, total_cost, order_date, expected_delivery_date):
-    new_order = {
-        "orderNumber": order_number,
-        "supplierName": supplier_name,
-        "booksOrdered": books_ordered,
-        "status": status,
-        "totalCost": total_cost,
-        "orderDate": order_date,
-        "expectedDeliveryDate": expected_delivery_date,
-    }
-    
-    
-    response = requests.post(API_MFRORDER_URL, json=new_order)
-    
-    # Handle the response
-    if response.status_code == 201:
-        st.success(f"Order '{order_number}' created successfully.")
-        return response.json() # Return the created order for further use
-    elif response.status_code == 400:
-        st.error(" Invalid input or order already exists")
-        return None
-    else:
-        st.error(f"Failed to create the order {order_date}. Please try again.")
-        return None
+@st.dialog("Create Order")
+def create_order():
+    st.subheader("Create Purchase Order")
+    with st.form("purchase_order_form", clear_on_submit=True):
+        # Select book titles from the inventory
+        books = fetch_books()
+        book_titles = [book['title'] for book in books]
+        book_title = st.selectbox("Select Book", book_titles if books else [])
+                
+        # Input other fields
+        quantity_to_order = st.number_input("Quantity to Order", min_value=1, value=1)
+        order_number = st.text_input("Order Number", placeholder="e.g., ORD123")
+        supplier_name = st.text_input("Supplier Name", placeholder="e.g., Book Supplier Inc.")
+        status = st.selectbox("Status", ["Pending", "Shipped", "Received"])
+        total_cost = st.number_input("Total Cost", min_value=0.0, step=0.01)
+        order_date = st.date_input("Order Date")
+        expected_delivery_date = st.date_input("Expected Delivery Date")
+
+        submitted = st.form_submit_button("Save Purchase Order")
+        if submitted:
+            new_order = {
+                "orderNumber": order_number,
+                "supplierName": supplier_name,
+                "status": status,
+                "totalCost": total_cost,
+                "orderDate": order_date,
+                "expectedDeliveryDate": expected_delivery_date,
+            }
+            response = requests.post(API_MFRORDER_URL, json=new_order)
+                    
+            # Handle the response
+            if response.status_code == 201:
+                st.success(f"Order '{order_number}' created successfully.")
+            elif response.status_code == 400:
+                st.error(" Invalid input or order already exists")
+            else:
+                st.error(f"Failed to create the order {order_date}. Please try again.")
+                
+            if new_order:
+                st.info(f"Order for {quantity_to_order} units of '{book_title}' created successfully!")
+            else:
+                st.error("Failed to match the selected book.")
+        else:
+            st.error("Please fill out all required fields.")
   
  
 # Function to fetch manufacturer orders
@@ -232,8 +252,6 @@ def order_details(order_id):
             cols[1].write(book_details.get("author", "N/A"))
             cols[2].write(book_details.get("genre", "N/A"))
             cols[3].write(str(book.get('quantity')))
-    
-# API Fuctions for user authentication
 
 # Function for adding a new user
 def add_user_api(username, password, first_name, last_name, role):
@@ -274,9 +292,7 @@ def validate_login_api(username, password):
         else:
             st.error("failed to log in. Please try again.")
         return False # Login failed
-            
     
-
 # Streamlit UI components
 # Set page configuration (must be the first Streamlit command)
 st.set_page_config(page_title="Bodhi Books Management System", layout="wide")
@@ -304,15 +320,6 @@ if 'name' not in st.session_state:
 if 'role' not in st.session_state:
     st.session_state.role = ""
 
-# Logout Functionality
-if st.session_state.logged_in:
-    if st.sidebar.button("Logout"):
-        st.session_state.logged_in = False
-        st.session_state.name = ""
-        st.session_state.role = ""
-        st.session_state['refresh'] = not st.session_state.get('refresh', False)
-
-
 
 # Home Page (Always Accessible)
 if page == "Home":
@@ -330,28 +337,52 @@ if page == "Home":
     """)
     
 # Login Section
+
+# Function to handle login
+def handle_login():
+    role = validate_login_api(st.session_state.temp_username, st.session_state.temp_password)
+    if role:
+        # update the session state for successful login
+        st.session_state.logged_in = True
+        st.session_state.username = st.session_state.temp_username
+        st.session_state.role = role
+        # Set a flag to clear fields on rerun
+        st.session_state.clear_fields = True
+        st.rerun()
+    else:
+        st.error("Invalid username or password. Please try again.")
+
+
+# Initialize session state variables
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "temp_username" not in st.session_state:
+    st.session_state.temp_username = ""
+if "temp_password" not in st.session_state:
+    st.session_state.temp_password = ""
+if "clear_fields" not in st.session_state:
+    st.session_state.clear_fields = False
+
+# Login Section
 if not st.session_state.logged_in:
     st.divider()
     st.subheader("🔐 Login")
-    username = st.text_input("Username", key="login_username")
-    password = st.text_input("Password", type="password", key="login_password")
+    # Clear fields if the flag is set
+    if st.session_state.clear_fields:
+        st.session_state.temp_username = ""
+        st.session_state.temp_password = ""
+        st.session_state.clear_fields = False  # Reset the flag
+    # Temporary variables for login inputs
+    username = st.text_input("Username", key="temp_username")
+    password = st.text_input("Password", type="password", key="temp_password")
     if st.button("Login"):
-        # call the validate login function
-        role = validate_login_api(username, password)
-        if role:
-            # update the session state for successful login
-            st.session_state.logged_in = True
-            st.session_state.username = username
-            st.session_state.role = role
-            # display a welcome message
-            st.success(f"Welcome, {username}!")
-            # Reset the login fields
-            st.session_state.login_username = ""
-            st.session_state.login_password = ""
-        else:
-            st.error("Invalid username or password. Please try again.")
+        handle_login()
+else:
+    st.success(f"Welcome, {st.session_state.username}!")
+    if st.button("Logout"):
+        st.session_state.logged_in = False
+        st.rerun()
 
-         
             
 # Create account section
 
@@ -503,12 +534,12 @@ if st.session_state.logged_in:
                     book = st.session_state.selected_book
                     with st.sidebar:
                         st.subheader("Edit Book")
-                        with st.form("update_book_form", clear_on_submit=True):
+                        with st.form("update_book_form",clear_on_submit=True):
                             new_title = st.text_input("Book Title", value=book["title"])
                             new_author = st.text_input("Author", value=book["author"])
                             new_genre = st.text_input("Genre", value=book["genre"])
                             new_quantity = st.number_input("Quantity", min_value=0, value=book["quantity"])
-                            new_price = st.number_input("Price", min_value=0.0, value=book["price"])
+                            new_price = st.number_input("Price", min_value=0.0, value=float(book["price"]))
                             new_language = st.text_input("Language", value=book.get("language", ""))
                             new_isbn = st.text_input("ISBN", value=book.get("isbn", ""))
                         
@@ -610,8 +641,6 @@ if st.session_state.logged_in:
             st.error(f"Error fetching trend data: {e}")
 
 
-
-
     # Orders Page
     elif page == "Orders":
         st.title("🛒 Orders")
@@ -622,6 +651,8 @@ if st.session_state.logged_in:
             - Create new orders for books running low on stock.
             - Ensure a steady supply of rare books for our customers.
         """)
+        if st.button("Create Order"):
+            create_order()
 
             # Section: Create Purchase Order Form (needs to be its own section to accommodate multiple books)
                 
