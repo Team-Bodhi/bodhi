@@ -132,35 +132,52 @@ def delete_book(book_id):
         st.error(f"Failed to delete the book: {response.text}")
 
 
-#Function for creating orders 
+# Functions for creating orders
+# Add books to order
+def add_book_to_order(booksInOrder):
+    # Select book titles from the inventory
+    books = fetch_books()
+    book_titles = [book['title'] for book in books]
+    book_title = st.selectbox("Select Book", book_titles if books else [], key=f'book_{booksInOrder}')
+                
+    # Input other fields
+    quantity_to_order = st.number_input("Quantity to Order", key=f'book_{booksInOrder}_qty', min_value=1, value=1)
+
+
+# Create orders 
 #FIXME requires testing
 @st.dialog("Create Order")
 def create_order():
     st.subheader("Create Purchase Order")
+    booksInOrder = 0
     with st.form("purchase_order_form", clear_on_submit=True):
-        # Select book titles from the inventory
-        books = fetch_books()
-        book_titles = [book['title'] for book in books]
-        book_title = st.selectbox("Select Book", book_titles if books else [])
-                
-        # Input other fields
-        quantity_to_order = st.number_input("Quantity to Order", min_value=1, value=1)
         order_number = st.text_input("Order Number", placeholder="e.g., ORD123")
         supplier_name = st.text_input("Supplier Name", placeholder="e.g., Book Supplier Inc.")
-        status = st.selectbox("Status", ["Pending", "Shipped", "Received"])
+        #  status = st.selectbox("Status", ["Pending", "Shipped", "Received"])
         total_cost = st.number_input("Total Cost", min_value=0.0, step=0.01)
         order_date = st.date_input("Order Date")
         expected_delivery_date = st.date_input("Expected Delivery Date")
 
+        # Select book titles from the inventory
+        books = fetch_books()
+        book_titles = [book['title'] for book in books]
+        book_title = st.selectbox("Select Book", book_titles if books else [], key=f'book_{booksInOrder}')
+                
+        # Input other fields
+        quantity_to_order = st.number_input("Quantity to Order", key=f'book_{booksInOrder}_qty', min_value=1, value=1)
+
+        # FIXME always init to pending?
         submitted = st.form_submit_button("Save Purchase Order")
         if submitted:
+            book_id = fetch_books(title=book_title)[0].get('_id')
             new_order = {
                 "orderNumber": order_number,
                 "supplierName": supplier_name,
-                "status": status,
+                "booksOrdered": [{"bookId": book_id, "quantity": quantity_to_order}],
                 "totalCost": total_cost,
-                "orderDate": order_date,
-                "expectedDeliveryDate": expected_delivery_date,
+                "status": "pending",
+                "orderDate": str(order_date),
+                "expectedDeliveryDate": str(expected_delivery_date)
             }
             response = requests.post(API_MFRORDER_URL, json=new_order)
                     
@@ -170,7 +187,7 @@ def create_order():
             elif response.status_code == 400:
                 st.error(" Invalid input or order already exists")
             else:
-                st.error(f"Failed to create the order {order_date}. Please try again.")
+                st.error(f"Failed to create the order {order_number}. Please try again.")
                 
             if new_order:
                 st.info(f"Order for {quantity_to_order} units of '{book_title}' created successfully!")
