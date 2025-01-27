@@ -189,31 +189,57 @@ if st.session_state.logged_in:
         # Generate Sales Report
         st.subheader("Generate Sales Report")
         with st.form("sales_report_form"):
-            # Input fields for sales report parameters
-            start_date = st.date_input("Start Date")
-            end_date = st.date_input("End Date")
-            book_title = st.text_input("Book Title (optional)")
-            genre = st.text_input("Genre (optional)")
-            status = st.selectbox("Sale Status (optional)", ["", "pending", "shipped", "received", "canceled"])
-            sale_type = st.selectbox("Sale Type (optional)", ["", "instore", "online"])
-            report_type = st.selectbox("Report Type", ["Summary", "Detailed"])
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                start_date = st.date_input("Start Date")
+                book_title = st.text_input("Book Title (optional)")
+                order_status = st.selectbox(
+                    "Order Status (optional)", 
+                    options=["", "pending", "shipped", "received", "canceled"],
+                    help="Filter by sale status"
+                )
+            
+            with col2:
+                end_date = st.date_input("End Date")
+                genre = st.text_input("Genre (optional)")
+                sale_type = st.selectbox(
+                    "Sale Type (optional)", 
+                    options=["", "instore", "online"],
+                    help="Filter by sale type (in-store or online)"
+                )
     
             # Submit button
             submitted = st.form_submit_button("Generate Report")
 
             if submitted:
                 try:
+                    # Debug section to show current values
+                    with st.expander("Debug Information", expanded=False):
+                        st.write("Date range:", start_date, "to", end_date)
+                        st.write("Filters:", {
+                            "Book Title": book_title,
+                            "Genre": genre,
+                            "Order Status": order_status,
+                            "Type": sale_type
+                        })
+                    
                     # Construct query parameters based on user input
                     report_params = {
-                        "startDate": str(start_date) if start_date else None,
-                        "endDate": str(end_date) if end_date else None,
+                        "startDate": start_date.strftime("%Y-%m-%d") if start_date else None,
+                        "endDate": end_date.strftime("%Y-%m-%d") if end_date else None,
                         "bookTitle": book_title if book_title else None,
                         "genre": genre if genre else None,
-                        "status": status if status else None,
-                        "type": sale_type if sale_type else None,
+                        "orderStatus": order_status if order_status else None,
+                        "type": sale_type if sale_type else None
                     }
+                    
                     # Filter out None values
                     report_params = {k: v for k, v in report_params.items() if v}
+
+                    # Show the query being sent
+                    with st.expander("API Request Details", expanded=False):
+                        st.write("Query Parameters:", report_params)
 
                     # Send request to API
                     response = requests.get(f"{API_BASE_URL}/sales", params=report_params)
@@ -221,8 +247,27 @@ if st.session_state.logged_in:
                     # Check the API response
                     if response.status_code == 200:
                         report_data = response.json()
-                        st.write("### Sales Report")
-                        st.dataframe(report_data)  # Display the report data in a table
+                        
+                        if not report_data:
+                            st.info("No sales found matching the specified criteria.")
+                        else:
+                            st.write("### Sales Report")
+                            st.write(f"Found {len(report_data)} sales")
+                            
+                            # Display summary statistics
+                            total_revenue = sum(sale.get('totalPrice', 0) for sale in report_data)
+                            total_items = sum(sale.get('totalItems', 0) for sale in report_data)
+                            
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Total Sales", len(report_data))
+                            with col2:
+                                st.metric("Total Revenue", f"${total_revenue:,.2f}")
+                            with col3:
+                                st.metric("Total Items Sold", total_items)
+                            
+                            # Display the detailed data
+                            st.dataframe(report_data)
                     else:
                         st.error(f"Failed to generate report: {response.text}")
                 except requests.exceptions.RequestException as e:

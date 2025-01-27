@@ -1,8 +1,29 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const moment = require('moment');
 const Sale = require('../models/sale');
 const Book = require('../models/book');
+
+/**
+ * Parse date string in various formats
+ * @param {string} dateStr - Date string in various formats
+ * @returns {Date|null} Parsed date or null if invalid
+ */
+function parseDate(dateStr) {
+  if (!dateStr) return null;
+  
+  // Try parsing with moment
+  const parsed = moment(dateStr);
+  
+  // Check if valid
+  if (parsed.isValid()) {
+    // Set time to start/end of day based on position
+    return parsed.toDate();
+  }
+  
+  return null;
+}
 
 /**
  * @swagger
@@ -17,13 +38,13 @@ const Book = require('../models/book');
  *         schema:
  *           type: string
  *           format: date
- *         description: Filter sales after this date (inclusive)
+ *         description: Filter sales after this date (inclusive). Accepts various formats including YYYY-MM-DD.
  *       - in: query
  *         name: endDate
  *         schema:
  *           type: string
  *           format: date
- *         description: Filter sales before this date (inclusive)
+ *         description: Filter sales before this date (inclusive). Accepts various formats including YYYY-MM-DD.
  *       - in: query
  *         name: bookTitle
  *         schema:
@@ -35,11 +56,11 @@ const Book = require('../models/book');
  *           type: string
  *         description: Filter by book genre
  *       - in: query
- *         name: status
+ *         name: orderStatus
  *         schema:
  *           type: string
  *           enum: [pending, shipped, received, canceled]
- *         description: Filter by sale status
+ *         description: Filter by order status
  *       - in: query
  *         name: type
  *         schema:
@@ -59,42 +80,68 @@ const Book = require('../models/book');
  *         description: Error fetching sales
  */
 router.get('/', async (req, res) => {
+  // Enhanced request logging
+  console.log('Sales GET request received:');
+  console.log('Query parameters:', JSON.stringify(req.query, null, 2));
+  console.log('URL:', req.originalUrl);
+  
   try {
     const {
       startDate,
       endDate,
       bookTitle,
       genre,
-      status,
+      orderStatus,
       type
     } = req.query;
 
     // Build the query object
     let query = {};
 
-    // Date range filter
+    // Date range filter with flexible parsing
     if (startDate || endDate) {
-      query.saleDate = {};
-      if (startDate) query.saleDate.$gte = new Date(startDate);
-      if (endDate) query.saleDate.$lte = new Date(endDate);
+      query.orderDate = {};
+      
+      const parsedStartDate = parseDate(startDate);
+      const parsedEndDate = parseDate(endDate);
+      
+      if (parsedStartDate) {
+        // Set time to start of day
+        parsedStartDate.setHours(0, 0, 0, 0);
+        query.orderDate.$gte = parsedStartDate;
+        console.log('Parsed start date:', parsedStartDate.toISOString());
+      }
+      
+      if (parsedEndDate) {
+        // Set time to end of day
+        parsedEndDate.setHours(23, 59, 59, 999);
+        query.orderDate.$lte = parsedEndDate;
+        console.log('Parsed end date:', parsedEndDate.toISOString());
+      }
+      
+      // Remove empty orderDate object if no valid dates
+      if (!Object.keys(query.orderDate).length) {
+        delete query.orderDate;
+      }
     }
 
     // Status and type filters
-    if (status) query.status = status;
+    if (orderStatus) query.orderStatus = orderStatus;
     if (type) query.type = type;
 
-    // Book title and genre filters (now checking embedded data and references)
+    // Book title and genre filters
     if (bookTitle) {
       query['$or'] = [
-        { 'orderItems.bookId.title': new RegExp(bookTitle, 'i') }
+        { 'orderItems.bookDetails.title': new RegExp(bookTitle, 'i') }
       ];
     }
 
     if (genre) {
-      query['$or'] = [
-        { 'orderItemsokId.genre': new RegExp(genre, 'i') }
-      ];
+      if (!query['$or']) query['$or'] = [];
+      query['$or'].push({ 'orderItems.bookDetails.genre': new RegExp(genre, 'i') });
     }
+
+    console.log('Final MongoDB query:', JSON.stringify(query, null, 2));
 
     // Execute the query with all filters
     const sales = await Sale.find(query)
@@ -114,7 +161,7 @@ router.get('/', async (req, res) => {
         select: 'firstName lastName email role'
       })
       .select('-__v')
-      .sort({ saleDate: -1 });
+      .sort({ orderDate: -1 });
 
     // Transform the response
     const transformedSales = sales.map(sale => {
@@ -134,7 +181,6 @@ router.get('/', async (req, res) => {
             publicationDate: item.bookId.publicationDate,
             coverImageUrl: item.bookId.coverImageUrl
           };
-          // Convert bookId back to just the ID string
           item.bookId = item.bookId._id;
         }
         return item;
@@ -144,9 +190,9 @@ router.get('/', async (req, res) => {
       saleObj.totalItems = sale.orderItems.reduce((sum, item) => sum + item.quantity, 0);
       
       // Format dates
-      saleObj.saleDate = sale.saleDate.toISOString();
-      saleObj.createdAt = sale.createdAt?.toISOString();
-      saleObj.updatedAt = sale.updatedAt?.toISOString();
+      saleObj.orderDate = moment(sale.orderDate).format('YYYY-MM-DD HH:mm:ss');
+      saleObj.createdAt = sale.createdAt ? moment(sale.createdAt).format('YYYY-MM-DD HH:mm:ss') : null;
+      saleObj.updatedAt = sale.updatedAt ? moment(sale.updatedAt).format('YYYY-MM-DD HH:mm:ss') : null;
       
       return saleObj;
     });

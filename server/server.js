@@ -55,12 +55,14 @@ const bookRoutes = require('./routes/books.js');
 const customerRoutes = require('./routes/customers');
 const userRoutes = require('./routes/users.js');
 const saleRoutes = require('./routes/sales.js');
+const reportRoutes = require('./routes/reports.js');
 
 app.use('/', indexRoute);
 app.use('/api/books', bookRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sales', saleRoutes);
+app.use('/api/reports', reportRoutes);
 
 // TODO
 // Customer order routes

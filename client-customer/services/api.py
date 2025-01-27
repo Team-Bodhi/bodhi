@@ -42,7 +42,7 @@ def submit_order(cart_items, shipping_info, payment_method, total_amount):
             } for item in cart_items
         ],
         "status": "pending",
-        "saleDate": datetime.now().isoformat(),
+        "orderDate": datetime.now().isoformat(),
         "totalPrice": total_amount,
         "paymentMethod": payment_method,
         "shippingAddress": shipping_info

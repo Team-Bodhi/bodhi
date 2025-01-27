@@ -133,8 +133,7 @@ def submit_order(shipping_info, payment_method):
                 "price": item["price"]
             } for item in st.session_state.cart
         ],
-        "status": "pending",
-        "saleDate": datetime.now().isoformat(),
+        "orderDate": datetime.now().isoformat(),
         "totalPrice": st.session_state.total_amount,
         "paymentMethod": payment_method,
         "shippingAddress": {

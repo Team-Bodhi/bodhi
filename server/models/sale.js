@@ -80,16 +80,16 @@ const saleSchema = new mongoose.Schema({
             message: 'At least one book must be ordered'
         }
     },
-    status: {
+    orderStatus: {
         type: String,
         default: 'pending',
         required: true,
         enum: {
             values: ['pending', 'shipped', 'received', 'canceled'],
-            message: 'Invalid sale status'
+            message: 'Invalid order status'
         }
     },
-    saleDate: {
+    orderDate: {
         type: Date,
         default: Date.now,
         required: true
