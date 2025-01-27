@@ -1,27 +1,7 @@
+import streamlit as st
+
 from bookstore_ui.bookstore import *
 
-#Login State Management
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-
-if 'name' not in st.session_state:
-    st.session_state.name = ""
-
-if 'role' not in st.session_state:
-    st.session_state.role = ""
-
-# Login Section
-
-
-# Initialize session state variables
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "temp_username" not in st.session_state:
-    st.session_state.temp_username = ""
-if "temp_password" not in st.session_state:
-    st.session_state.temp_password = ""
-if "clear_fields" not in st.session_state:
-    st.session_state.clear_fields = False
 
 def login_section():
     # Login Section

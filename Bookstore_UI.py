@@ -7,17 +7,34 @@ Created on Thu Jan  9 17:36:27 2025
 
 # functions for bookstore_ui
 
+import streamlit as st
+
 from bookstore_ui.bookstore import *
 from bookstore_ui.Login_UI import *
 
-    
 # Streamlit UI components
 # Set page configuration (must be the first Streamlit command)
 st.set_page_config(page_title="Bodhi Books Management System", layout="wide")
 
+# Login State Management
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "name" not in st.session_state:
+    st.session_state.name = ""
+if "role" not in st.session_state:
+    st.session_state.role = ""
+
+# Initialize session state variables
+if "temp_username" not in st.session_state:
+    st.session_state.temp_username = ""
+if "temp_password" not in st.session_state:
+    st.session_state.temp_password = ""
+if "clear_fields" not in st.session_state:
+    st.session_state.clear_fields = False
+
 page = "Home"
 login_section()
-        
+
 # Protected Pages
 if st.session_state.logged_in:
     # Sidebar Navigation
