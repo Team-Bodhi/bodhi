@@ -86,20 +86,20 @@ router.get('/', async (req, res) => {
     // Book title and genre filters (now checking embedded data and references)
     if (bookTitle) {
       query['$or'] = [
-        { 'bookOrdered.bookId.title': new RegExp(bookTitle, 'i') }
+        { 'orderItems.bookId.title': new RegExp(bookTitle, 'i') }
       ];
     }
 
     if (genre) {
       query['$or'] = [
-        { 'bookOrdered.bookId.genre': new RegExp(genre, 'i') }
+        { 'orderItemsokId.genre': new RegExp(genre, 'i') }
       ];
     }
 
     // Execute the query with all filters
     const sales = await Sale.find(query)
       .populate({
-        path: 'bookOrdered.bookId',
+        path: 'orderItems.bookId',
         model: 'Book',
         select: 'title author isbn price coverImageUrl summary publisher publicationDate language genre quantity'
       })
@@ -121,7 +121,7 @@ router.get('/', async (req, res) => {
       const saleObj = sale.toObject();
       
       // Update bookDetails from the populated bookId
-      saleObj.bookOrdered = saleObj.bookOrdered.map(item => {
+      saleObj.orderItems = saleObj.orderItems.map(item => {
         if (item.bookId) {
           item.bookDetails = {
             title: item.bookId.title,
@@ -141,7 +141,7 @@ router.get('/', async (req, res) => {
       });
       
       // Calculate total items
-      saleObj.totalItems = sale.bookOrdered.reduce((sum, item) => sum + item.quantity, 0);
+      saleObj.totalItems = sale.orderItems.reduce((sum, item) => sum + item.quantity, 0);
       
       // Format dates
       saleObj.saleDate = sale.saleDate.toISOString();
@@ -190,12 +190,12 @@ router.post('/', async (req, res) => {
     const orderData = { ...req.body };
     
     // Validate and fetch books to check quantities
-    const bookIds = orderData.bookOrdered.map(item => item.bookId);
+    const bookIds = orderData.orderItems.map(item => item.bookId);
     const books = await Book.find({ _id: { $in: bookIds } });
     const bookMap = new Map(books.map(book => [book._id.toString(), book]));
 
     // Validate each book order and add price
-    orderData.bookOrdered = orderData.bookOrdered.map(item => {
+    orderData.orderItems = orderData.orderItems.map(item => {
       const book = bookMap.get(item.bookId.toString());
       if (!book) {
         throw new Error(`Book with ID ${item.bookId} does not exist`);
@@ -218,7 +218,7 @@ router.post('/', async (req, res) => {
     console.log('Sale saved successfully with ID:', savedSale._id);
 
     // Update book quantities
-    await Promise.all(orderData.bookOrdered.map(item => 
+    await Promise.all(orderData.orderItems.map(item => 
       Book.findByIdAndUpdate(
         item.bookId,
         { $inc: { quantity: -item.quantity } },
@@ -230,7 +230,7 @@ router.post('/', async (req, res) => {
     // For the response, populate all references
     const populatedSale = await Sale.findById(savedSale._id)
       .populate({
-        path: 'bookOrdered.bookId',
+        path: 'orderItems.bookId',
         model: 'Book',
         select: 'title author isbn price coverImageUrl summary publisher publicationDate language genre quantity'
       })
@@ -249,7 +249,7 @@ router.post('/', async (req, res) => {
     const responseData = populatedSale.toObject();
     
     // Update bookDetails in the response
-    responseData.bookOrdered = responseData.bookOrdered.map(item => {
+    responseData.orderItems = responseData.orderItems.map(item => {
       if (item.bookId) {
         item.bookDetails = {
           title: item.bookId.title,
@@ -267,7 +267,7 @@ router.post('/', async (req, res) => {
       return item;
     });
 
-    responseData.totalItems = populatedSale.bookOrdered.reduce((sum, item) => sum + item.quantity, 0);
+    responseData.totalItems = populatedSale.orderItems.reduce((sum, item) => sum + item.quantity, 0);
 
     console.log('Sending response with populated sale data');
     res.status(201).json(responseData);

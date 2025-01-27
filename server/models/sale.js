@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 // book subschema
-const bookOrderedSchema = new mongoose.Schema({
+const orderItemsSchema = new mongoose.Schema({
     bookId: {
         type: mongoose.Types.ObjectId,
         ref: 'Book',
@@ -70,8 +70,8 @@ const saleSchema = new mongoose.Schema({
             message: 'Sale type must be either instore or online'
         }
     },
-    bookOrdered: {
-        type: [bookOrderedSchema],
+    orderItems: {
+        type: [orderItemsSchema],
         required: [true, 'At least one book is required'],
         validate: {
             validator: function(array) {
@@ -145,14 +145,14 @@ saleSchema.virtual('formattedAddress').get(function() {
 saleSchema.pre('save', async function(next) {
     try {
         // Fetch all books to calculate total price
-        const bookIds = this.bookOrdered.map(item => item.bookId);
+        const bookIds = this.orderItems.map(item => item.bookId);
         const books = await mongoose.model('Book').find({ _id: { $in: bookIds } });
         
         // Create a map for quick price lookup
         const bookPrices = new Map(books.map(book => [book._id.toString(), book.price]));
         
         // Calculate total
-        const calculatedTotal = this.bookOrdered.reduce((sum, item) => {
+        const calculatedTotal = this.orderItems.reduce((sum, item) => {
             const price = bookPrices.get(item.bookId.toString());
             if (!price) {
                 throw new Error(`Price not found for book ${item.bookId}`);

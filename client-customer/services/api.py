@@ -34,7 +34,7 @@ def submit_order(cart_items, shipping_info, payment_method, total_amount):
     """Submit an order to the API"""
     order_data = {
         "type": "online",
-        "bookOrdered": [
+        "orderItems": [
             {
                 "bookId": item["bookId"],
                 "quantity": item["quantity"],

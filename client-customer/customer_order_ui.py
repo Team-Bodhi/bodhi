@@ -126,7 +126,7 @@ def submit_order(shipping_info, payment_method):
     # Format the order data according to the sale schema
     order_data = {
         "type": "online",
-        "bookOrdered": [
+        "orderItems": [
             {
                 "bookId": item["bookId"],
                 "quantity": item["quantity"],
