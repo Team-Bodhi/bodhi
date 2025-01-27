@@ -1,7 +1,42 @@
-import streamlit as st
-
 from bookstore_ui.bookstore import *
 
+# init session state
+
+def init_session_state():
+    # Login State Management
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+    if "name" not in st.session_state:
+        st.session_state.name = ""
+    if "role" not in st.session_state:
+        st.session_state.role = ""
+
+    # Initialize session state variables
+    if "temp_username" not in st.session_state:
+        st.session_state.temp_username = ""
+    if "temp_password" not in st.session_state:
+        st.session_state.temp_password = ""
+    if "clear_fields" not in st.session_state:
+        st.session_state.clear_fields = False
+
+@st.dialog("Create Account")
+def create_account():
+    with st.form("purchase_order_form", clear_on_submit=True):
+        # Input fields for creating a new account
+        new_username = st.text_input("New Username", key="new_username")
+        new_password = st.text_input("New Password", type="password", key="new_password")
+        first_name = st.text_input("First Name", key="first_name")
+        last_name = st.text_input("Last Name", key="last_name")
+        role = st.selectbox("Role", ["staff", "manager"], key="role")
+        
+        submitted = st.form_submit_button("Create Account")
+        if submitted:
+            if new_username and new_password and first_name and last_name:
+                response = add_user_api(new_username, new_password, first_name, last_name, role)
+                st.info(response)
+                st.rerun()
+            else:
+                st.warning("All fields are required to create an account.")
 
 def login_section():
     # Login Section
@@ -22,17 +57,14 @@ def login_section():
     # Create account
 
     # Initialize session state for the expander
+    # FIXME add way to restrict people from creating accounts? (by role)
     if not st.session_state.logged_in:
-        if "show_create_account" not in st.session_state:
-            st.session_state.show_create_account = False  # Expander starts collapsed
-        
-        # Toggle function for the expander
-        def toggle_expander():
-            st.session_state.show_create_account = not st.session_state.show_create_account
-        
-        # Main "Create a New Account" toggle button
-        if not st.session_state.show_create_account:
-            st.button("Create a New Account", on_click=toggle_expander)
+        #if "show_create_account" not in st.session_state:
+            #st.session_state.show_create_account = True  # will change in future
+        st.session_state.show_create_account = True
+        if st.session_state.show_create_account:
+            if st.button("Create Account"):
+                create_account()
             
         # Initialize session state for role
         if 'role' not in st.session_state or st.session_state.role not in ["staff", "manager"]:
@@ -40,29 +72,9 @@ def login_section():
         
         
         # Only show the expander if "show_create_account" is True
-        if st.session_state.show_create_account:
-            with st.expander("Create a New Account", expanded=True):
-                # Input fields for creating a new account
-                new_username = st.text_input("New Username", key="new_username")
-                new_password = st.text_input("New Password", type="password", key="new_password")
-                first_name = st.text_input("First Name", key="first_name")
-                last_name = st.text_input("Last Name", key="last_name")
-                role = st.selectbox("Role", ["staff", "manager"], key="role")
-        
-                if st.button("Create Account"):
-                    if new_username and new_password and first_name and last_name:
-                        response = add_user_api(new_username, new_password, first_name, last_name, role)
-                        st.info(response)
-        
-                        # Reset form fields and collapse after success
-                        st.session_state.new_username = ""
-                        st.session_state.new_password = ""
-                        st.session_state.first_name = ""
-                        st.session_state.last_name = ""
-                        st.session_state.role = "staff"  # Reset to default
-                        st.session_state.show_create_account = False
-                    else:
-                        st.warning("All fields are required to create an account.")
+        #if st.session_state.show_create_account:
+            #with st.expander("Create a New Account", expanded=True):
+                
     
 def logout():
     st.success(f"Welcome, {st.session_state.username}!")
