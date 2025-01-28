@@ -132,7 +132,9 @@ if st.session_state.logged_in:
     
                 # Add "Edit" and "Delete" buttons
                 if cols[5].button("Edit", key=f"edit_{book['_id']}"):
-                    st.session_state.selected_book = book
+                    print("button pressed")
+                    edit_book(book)
+                    #st.session_state.selected_book = book
     
                 if cols[5].button("Delete", key=f"delete_{book['_id']}"):
                     delete_book(book["_id"])
@@ -140,40 +142,6 @@ if st.session_state.logged_in:
                     st.session_state.refresh_inventory = True
                     st.rerun()
 
-
-        
-                # Display the edit form in the sidebar if a book is selected
-                if st.session_state.selected_book:
-                    book = st.session_state.selected_book
-                    with st.sidebar:
-                        st.subheader("Edit Book")
-                        with st.form("update_book_form",clear_on_submit=True):
-                            new_title = st.text_input("Book Title", value=book["title"])
-                            new_author = st.text_input("Author", value=book["author"])
-                            new_genre = st.text_input("Genre", value=book["genre"])
-                            new_quantity = st.number_input("Quantity", min_value=0, value=book["quantity"])
-                            new_price = st.number_input("Price", min_value=0.0, value=float(book["price"]))
-                            new_language = st.text_input("Language", value=book.get("language", ""))
-                            new_isbn = st.text_input("ISBN", value=book.get("isbn", ""))
-                        
-                            update_submitted = st.form_submit_button("Update Book")
-                            if update_submitted:
-                                success = update_book(
-                                    book["_id"],
-                                    new_title,
-                                    new_author,
-                                    new_genre,
-                                    int(new_quantity),
-                                    float(new_price),
-                                    new_language,
-                                    new_isbn,
-                                )
-                                if success:
-                                    st.success(f"Book '{new_title}' updated successfully!")
-                                    # Clear the selected book and refresh the books
-                                    st.session_state.selected_book = None
-                                    st.session_state.refresh_inventory = True
-                                    st.rerun()
         
     # Sales Records Page
     elif page == "Sales Records":
@@ -327,51 +295,10 @@ if st.session_state.logged_in:
             - Create new orders for books running low on stock.
             - Ensure a steady supply of rare books for our customers.
         """)
+        # Section: Create Purchase Order Form
         if st.button("Create Order"):
             create_order()
 
-            # Section: Create Purchase Order Form (needs to be its own section to accommodate multiple books)
-                
-            
-            # st.subheader("Create Purchase Order")
-            # with st.form("purchase_order_form", clear_on_submit=True):
-            #     # Select book titles from the inventory
-            #     books = fetch_books()
-            #     book_titles = [book['title'] for book in books]
-            #     book_title = st.selectbox("Select Book", book_titles if books else [])
-                
-            #     # Input other fields
-            #     quantity_to_order = st.number_input("Quantity to Order", min_value=1, value=1)
-            #     order_number = st.text_input("Order Number", placeholder="e.g., ORD123")
-            #     supplier_name = st.text_input("Supplier Name", placeholder="e.g., Book Supplier Inc.")
-            #     status = st.selectbox("Status", ["Pending", "Shipped", "Received"])
-            #     total_cost = st.number_input("Total Cost", min_value=0.0, step=0.01)
-            #     order_date = st.date_input("Order Date")
-            #     expected_delivery_date = st.date_input("Expected Delivery Date")
-
-            #     submitted = st.form_submit_button("Save Purchase Order")
-            #     if submitted:
-            #         if book_title and order_number and supplier_name:
-            #             # Match the selected book with its details
-            #             selected_book = next((book for book in books if book['title'] == book_title), None)
-            #             if selected_book:
-            #                 # Create the new order
-            #                 books_ordered = [{"title": book_title, "quantity": quantity_to_order}]
-            #                 new_order = create_order(
-            #                     order_number=order_number,
-            #                     supplier_name=supplier_name,
-            #                     books_ordered=books_ordered,
-            #                     status=status.lower(),
-            #                     total_cost=total_cost,
-            #                     order_date=str(order_date),  # Convert date to string for API
-            #                     expected_delivery_date=str(expected_delivery_date),  # Convert date to string for API
-            #                 )
-            #                 if new_order:
-            #                     st.info(f"Order for {quantity_to_order} units of '{book_title}' created successfully!")
-            #             else:
-            #                 st.error("Failed to match the selected book.")
-            #         else:
-            #             st.error("Please fill out all required fields.")
             
         cancel_button = False
         cancel_order_id = ""
