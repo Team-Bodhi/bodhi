@@ -316,7 +316,6 @@ if st.session_state.logged_in:
                 date = ""
                 with st.expander(f"Order: {order['orderNumber']} ({order['status']})"):
                     st.write(f"**Supplier Name**: {order['supplierName']}")
-                    st.write(f"**Status**: {order['status']}")
                     st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
                     date = formatDatetime(order['orderDate'])
                     st.write(f"**Order Date**: {date}")
