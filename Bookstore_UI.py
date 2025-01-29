@@ -132,7 +132,6 @@ if st.session_state.logged_in:
     
                 # Add "Edit" and "Delete" buttons
                 if cols[5].button("Edit", key=f"edit_{book['_id']}"):
-                    print("button pressed")
                     edit_book(book)
                     #st.session_state.selected_book = book
     
@@ -309,24 +308,27 @@ if st.session_state.logged_in:
 
         # Section: View Existing Purchase Orders
         st.subheader("Existing Purchase Orders")
+
         orders = fetch_orders()
         if orders:
+            header_cols = st.columns([2, 2, 3, 2, 1, 2])
+            header_cols[0].write("Order Number")
+            header_cols[1].write("Status")
+            header_cols[2].write("Supplier Name")
+            header_cols[3].write("Ordered On")
+            header_cols[4].write("Total Cost")
+            header_cols[5].write("")
             for order in orders:
                 order_id = order['_id']
                 date = ""
-                with st.expander(f"Order: {order['orderNumber']} ({order['status']})"):
-                    st.write(f"**Supplier Name**: {order['supplierName']}")
-                    st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
-                    date = formatDatetime(order['orderDate'])
-                    st.write(f"**Order Date**: {date}")
-                    date = formatDatetime(order['expectedDeliveryDate'])
-                    st.write(f"**Expected Delivery Date**: {date}")
-    #               if st.button(f"Receive Order", order['_id']):
-    #                  receive_order(order_id)
-                    if st.button("Details", order['_id']):
-                        order_details(order['_id'])
-    #               if st.button(f"Cancel Order", order['_id']):
-    #                   cancel_order(order_id)
+                cols = st.columns([2, 2, 3, 2, 1, 2])
+                cols[0].write(order.get("orderNumber", "N/A"))
+                cols[1].write(order.get("status", "N/A"))
+                cols[2].write(order.get("supplierName", "N/A"))
+                cols[3].write(formatDate(order['orderDate']))
+                cols[4].write(f"${order['totalCost']:.2f}")
+                if cols[5].button("Details", key=f'order_{order['_id']}'):
+                    order_details(order['_id'])
 
 else: 
     page = "Home"
