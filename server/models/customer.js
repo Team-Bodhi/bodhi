@@ -1,7 +1,12 @@
 const mongoose = require('mongoose');
 
 const customerSchema = new mongoose.Schema({
-  name: {
+  firstName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  lastName: {
     type: String,
     required: true,
     trim: true
@@ -20,15 +25,53 @@ const customerSchema = new mongoose.Schema({
     trim: true
   },
   address: {
-    type: String,
-    required: true,
-    trim: true
+    street: {
+      type: String,
+      required: true
+    },
+    city: {
+      type: String,
+      required: true
+    },
+    state: {
+      type: String,
+      required: true
+    },
+    zip: {
+      type: String,
+      required: true
+    }
+  },
+  // Reference to User document for authentication
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  // Customer-specific fields
+  orderCount: {
+    type: Number,
+    default: 0
+  },
+  totalSpent: {
+    type: Number,
+    default: 0
+  },
+  lastPurchase: {
+    type: Date
   }
 }, {
   timestamps: true // This automatically adds createdAt and updatedAt fields
 });
 
+// Virtual for full name
+customerSchema.virtual('fullName').get(function() {
+  return `${this.firstName} ${this.lastName}`;
+});
+
 // Add index for common queries
 customerSchema.index({ phone: 1 });
 
-module.exports = mongoose.model('Customer', customerSchema); 
+const Customer = mongoose.model('Customer', customerSchema);
+
+module.exports = Customer; 

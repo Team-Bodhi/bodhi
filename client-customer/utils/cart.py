@@ -34,6 +34,11 @@ def remove_from_cart(index):
     st.session_state.total_amount -= removed_item["price"] * removed_item["quantity"]
 
 def clear_cart():
-    """Clear the entire cart"""
+    """Clear the shopping cart and related states"""
     st.session_state.cart = []
-    st.session_state.total_amount = 0.0 
+    st.session_state.total_amount = 0.0
+    # Clear order success state
+    if 'order_success' in st.session_state:
+        del st.session_state.order_success
+    if 'order_details' in st.session_state:
+        del st.session_state.order_details 

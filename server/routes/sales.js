@@ -92,7 +92,8 @@ router.get('/', async (req, res) => {
       bookTitle,
       genre,
       orderStatus,
-      type
+      type,
+      customerId
     } = req.query;
 
     // Build the query object
@@ -128,6 +129,7 @@ router.get('/', async (req, res) => {
     // Status and type filters
     if (orderStatus) query.orderStatus = orderStatus;
     if (type) query.type = type;
+    if (customerId) query.customerId = customerId;
 
     // Book title and genre filters
     if (bookTitle) {

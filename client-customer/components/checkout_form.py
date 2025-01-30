@@ -1,17 +1,19 @@
 import streamlit as st
-from services.api import submit_order
+from services.api import api_service
 from utils.cart import clear_cart
 from utils.helpers import navigate_to
 
 
 def render_order_success(order_details):
     """Render the order success screen"""
+    st.write("Debug - Rendering success screen with details:", order_details)
+    
     st.balloons()
     st.title("🎉 Order Placed Successfully!")
     st.success("You will receive a confirmation email shortly.")
     
     st.subheader("Order Summary")
-    for item in order_details['items']:
+    for item in order_details['orderItems']:
         st.markdown(f"""
         <div class="cart-item">
             <div>{item['title']}</div>
@@ -20,33 +22,45 @@ def render_order_success(order_details):
         """, unsafe_allow_html=True)
     
     st.write("---")
-    st.markdown(f'<h3 class="price-tag">Total: ${order_details["total"]:.2f}</h3>', 
+    st.markdown(f'<h3 class="price-tag">Total: ${order_details["totalPrice"]:.2f}</h3>', 
                unsafe_allow_html=True)
     
     st.write("---")
     st.subheader("📦 Shipping To")
-    address = order_details['shipping']
+    address = order_details['shippingAddress']
     st.write(f"{address['street']}")
     st.write(f"{address['city']}, {address['state']} {address['zipCode']}")
     
     if st.button("Continue Shopping →", type="primary", use_container_width=True):
-        clear_cart()
+        # Clear success state and navigate to main
+        st.session_state.order_success = False
+        st.session_state.order_details = None
         navigate_to('main')
+
 
 def render_checkout_form():
     """Render the checkout form"""
-    # Check if we're in success state
-    if 'order_success' in st.session_state and st.session_state.order_success:
-        render_order_success(st.session_state.order_details)
-        return
-    
     # Back button at the top
     col1, col2 = st.columns([1, 5])
     with col1:
         if st.button("← Back"):
-            navigate_to('main')
+            st.session_state.current_page = 'main'
+            st.rerun()
     with col2:
         st.title("Checkout")
+    
+    # Check if we're in success state FIRST
+    if st.session_state.get('order_success', False):
+        render_order_success(st.session_state.order_details)
+        return
+    
+    # Then check if cart is empty
+    if not st.session_state.cart:
+        st.warning("Your cart is empty.")
+        if st.button("Continue Shopping"):
+            st.session_state.current_page = 'main'
+            st.rerun()
+        return
     
     # Create two columns for the form
     form_col, summary_col = st.columns([3, 2])
@@ -55,13 +69,33 @@ def render_checkout_form():
         # Shipping Information
         with st.container():
             st.subheader("📦 Shipping Address")
+            
+            # Get user data if authenticated
+            user = st.session_state.user if st.session_state.is_authenticated else None
+            
             col1, col2 = st.columns(2)
             with col1:
-                street = st.text_input("Street Address", placeholder="123 Main St")
-                city = st.text_input("City", placeholder="Anytown")
+                street = st.text_input(
+                    "Street Address",
+                    value=user["address"]["street"] if user else "",
+                    placeholder="123 Main St"
+                )
+                city = st.text_input(
+                    "City",
+                    value=user["address"]["city"] if user else "",
+                    placeholder="Anytown"
+                )
             with col2:
-                state = st.text_input("State", placeholder="CA")
-                zip_code = st.text_input("ZIP Code", placeholder="12345")
+                state = st.text_input(
+                    "State",
+                    value=user["address"]["state"] if user else "",
+                    placeholder="CA"
+                )
+                zip_code = st.text_input(
+                    "ZIP Code",
+                    value=user["address"]["zip"] if user else "",
+                    placeholder="12345"
+                )
         
         # Payment Method
         st.write("---")
@@ -104,25 +138,45 @@ def render_checkout_form():
                     "zipCode": zip_code
                 }
                 
-                success, response = submit_order(
-                    st.session_state.cart,
-                    shipping_info,
-                    payment_method,
-                    st.session_state.total_amount
-                )
+                # Include user ID if authenticated
+                order_data = {
+                    "orderItems": [
+                        {
+                            "bookId": item["bookId"],
+                            "quantity": item["quantity"]
+                        }
+                        for item in st.session_state.cart
+                    ],
+                    "shippingAddress": shipping_info,
+                    "paymentMethod": payment_method,
+                    "totalPrice": float(st.session_state.total_amount),
+                    "customerId": st.session_state.user.get("_id") if st.session_state.is_authenticated else None
+                }
+                
+                st.write("Debug - Submitting order:", order_data)
+                success, response = api_service.submit_order(order_data)
+                st.write("Debug - Order submission result:", success, response)
                 
                 if success:
                     # Store order details for success screen
                     st.session_state.order_success = True
                     st.session_state.order_details = {
-                        'items': st.session_state.cart,
-                        'total': st.session_state.total_amount,
-                        'shipping': shipping_info
+                        'orderItems': [{
+                            'title': item['title'],
+                            'price': item['price'],
+                            'quantity': item['quantity']
+                        } for item in st.session_state.cart],
+                        'totalPrice': st.session_state.total_amount,
+                        'shippingAddress': shipping_info,
+                        'paymentMethod': payment_method
                     }
+                    # Clear cart after storing details
+                    st.session_state.cart = []
+                    st.session_state.total_amount = 0.0
                     st.rerun()
                 else:
                     error_msg = "Failed to place order. Please try again or contact support."
-                    if response:
+                    if response and hasattr(response, 'json'):
                         error_details = response.json().get('details', '')
                         error_msg = f"{error_msg}\nDetails: {error_details}"
                     st.error(error_msg) 
