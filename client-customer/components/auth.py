@@ -59,55 +59,132 @@ def render_registration_form():
             st.rerun()
     with col2:
         st.title("Create Account")
-    
+
     with st.form("registration_form"):
+        # Personal Information
+        st.subheader("Personal Information")
         col1, col2 = st.columns(2)
-        
         with col1:
-            first_name = st.text_input("First Name")
-            email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
-            street = st.text_input("Street Address")
-            city = st.text_input("City")
-            
+            first_name = st.text_input(
+                "First Name",
+                help="Enter your first name"
+            )
         with col2:
-            last_name = st.text_input("Last Name")
-            phone = st.text_input("Phone")
-            confirm_password = st.text_input("Confirm Password", type="password")
-            state = st.text_input("State")
-            zip_code = st.text_input("ZIP Code")
-            
-        submit = st.form_submit_button("Register")
-        
+            last_name = st.text_input(
+                "Last Name",
+                help="Enter your last name"
+            )
+
+        # Account Information
+        st.subheader("Account Information")
+        col1, col2 = st.columns(2)
+        with col1:
+            email = st.text_input(
+                "Email",
+                help="Enter a valid email address",
+                kwargs={
+                    "type": "email",
+                    "autocomplete": "email"
+                }
+            )
+            phone = st.text_input("Phone", help="Enter your phone number")
+        with col2:
+            password = st.text_input(
+                "Password",
+                type="password",
+                help="Password must be at least 8 characters long",
+                kwargs={
+                    "autocomplete": "new-password",
+                    "minlength": "8"
+                }
+            )
+            confirm_password = st.text_input(
+                "Confirm Password",
+                type="password",
+                help="Re-enter your password",
+                kwargs={
+                    "autocomplete": "new-password"
+                }
+            )
+
+        # Shipping Address
+        st.subheader("Shipping Address")
+        col1, col2 = st.columns(2)
+        with col1:
+            street = st.text_input(
+                "Street Address",
+                help="Enter your street address"
+            )
+            city = st.text_input(
+                "City",
+                help="Enter your city"
+            )
+        with col2:
+            state = st.text_input(
+                "State",
+                help="Enter your state (e.g., CA)"
+            )
+            zip_code = st.text_input(
+                "ZIP Code",
+                help="Enter your 5-digit ZIP code"
+            )
+
+        submit = st.form_submit_button("Create Account", type="primary", use_container_width=True)
+
         if submit:
+            # Validate all fields are filled
             if not all([first_name, last_name, email, password, confirm_password,
                        phone, street, city, state, zip_code]):
                 st.error("Please fill in all fields")
                 return
-                
+
+            # Validate email format
+            if not '@' in email or not '.' in email:
+                st.error("Please enter a valid email address")
+                return
+
+            # Validate password length
+            if len(password) < 8:
+                st.error("Password must be at least 8 characters long")
+                return
+
+            # Validate passwords match
             if password != confirm_password:
                 st.error("Passwords do not match")
                 return
-                
+
+            # Validate ZIP code format
+            if not zip_code.isdigit() or len(zip_code) != 5:
+                st.error("Please enter a valid 5-digit ZIP code")
+                return
+
+            # Validate phone number (basic check)
+            phone_digits = ''.join(filter(str.isdigit, phone))
+            if len(phone_digits) < 10:
+                st.error("Please enter a valid phone number")
+                return
+
             user_data = {
                 "firstName": first_name,
                 "lastName": last_name,
-                "email": email,
+                "email": email.lower().strip(),  # Normalize email
+                "username": email.lower().strip(),  # Use email as username
                 "password": password,
                 "phone": phone,
                 "address": {
                     "street": street,
                     "city": city,
-                    "state": state,
+                    "state": state.upper(),  # Normalize state
                     "zip": zip_code
                 }
             }
-            
-            if auth_service.register(user_data):
-                st.success("Registration successful!")
-                st.session_state.page = 'main'
-                st.rerun()
-    
+
+            with st.spinner("Creating your account..."):
+                if auth_service.register(user_data):
+                    st.success("Registration successful! Welcome to Bodhi Books.")
+                    st.session_state.page = 'main'
+                    st.rerun()
+
     # Login link
     st.write("Already have an account?")
     if st.button("Login", key="register_to_login"):
@@ -149,21 +226,33 @@ def render_profile():
     # Profile Information Section
     with st.expander("Personal Information", expanded=True):
         with st.form("profile_form"):
+            # Personal Information
+            st.subheader("Personal Information")
             col1, col2 = st.columns(2)
-            
             with col1:
                 first_name = st.text_input("First Name", value=user.get("firstName", ""))
-                email = st.text_input("Email", value=user.get("email", ""), disabled=True)
-                street = st.text_input("Street Address", value=user.get("address", {}).get("street", ""))
-                city = st.text_input("City", value=user.get("address", {}).get("city", ""))
-                
             with col2:
                 last_name = st.text_input("Last Name", value=user.get("lastName", ""))
+
+            # Account Information
+            st.subheader("Account Information")
+            col1, col2 = st.columns(2)
+            with col1:
+                email = st.text_input("Email", value=user.get("email", ""), disabled=True)
+            with col2:
                 phone = st.text_input("Phone", value=user.get("phone", ""))
+
+            # Shipping Address
+            st.subheader("Shipping Address")
+            col1, col2 = st.columns(2)
+            with col1:
+                street = st.text_input("Street Address", value=user.get("address", {}).get("street", ""))
+                city = st.text_input("City", value=user.get("address", {}).get("city", ""))
+            with col2:
                 state = st.text_input("State", value=user.get("address", {}).get("state", ""))
                 zip_code = st.text_input("ZIP Code", value=user.get("address", {}).get("zip", ""))
                 
-            save_changes = st.form_submit_button("Save Changes")
+            save_changes = st.form_submit_button("Save Changes", type="primary", use_container_width=True)
             
             if save_changes:
                 updated_data = {

@@ -22,7 +22,7 @@ const generateToken = (user) => {
 // Register new customer
 router.post('/register', async (req, res) => {
     try {
-        const { email, password, firstName, lastName, phone, address } = req.body;
+        const { email, username, password, firstName, lastName, phone, address } = req.body;
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
@@ -33,6 +33,7 @@ router.post('/register', async (req, res) => {
         // Create user account first
         const user = new User({
             email,
+            username,
             password,
             role: 'customer',
             profileType: 'Customer'

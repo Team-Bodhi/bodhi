@@ -12,34 +12,65 @@ class AuthService:
     def register(self, user_data: Dict) -> Optional[Dict]:
         """Register a new customer"""
         try:
+            # Ensure username is set from email
+            registration_data = {
+                "email": user_data["email"],
+                "username": user_data["email"],  # Explicitly set username to email
+                "password": user_data["password"],
+                "firstName": user_data["firstName"],
+                "lastName": user_data["lastName"],
+                "phone": user_data["phone"],
+                "address": user_data["address"]
+            }
+            
+            # Add debug logging
+            st.write("Debug - Sending registration data:", {**registration_data, 'password': '*****'})
+            
             response = requests.post(
                 f"{self.base_url}/auth/register",
-                json=user_data,
+                json=registration_data,
                 headers={'Content-Type': 'application/json'}
             )
             
+            # Add debug logging for response
+            st.write("Debug - Registration response status:", response.status_code)
+            
             try:
                 response_data = response.json()
-                st.write("Response Data:", response_data)
+                st.write("Debug - Registration response:", response_data)
                 
                 if response.status_code == 201:
                     # Store auth token and user data in session
                     st.session_state.user = response_data["user"]
-                    st.write("Debug - Stored User Data:", st.session_state.user)
                     st.session_state.token = response_data["token"]
                     st.session_state.is_authenticated = True
                     st.session_state.auth_error = None
                     return response_data
                 else:
+                    # Extract detailed error message
                     error_msg = response_data.get("error", "Registration failed")
+                    if "details" in response_data:
+                        error_msg += f": {response_data['details']}"
+                    elif "message" in response_data:
+                        error_msg += f": {response_data['message']}"
+                    
+                    # Check for specific error cases
+                    if "duplicate key" in str(response_data).lower():
+                        error_msg = "An account with this email already exists"
+                    elif "validation" in str(response_data).lower():
+                        error_msg = "Please check your input: " + error_msg
+                    
                     st.session_state.auth_error = error_msg
                     st.error(error_msg)
                     return None
             except Exception as e:
-                st.write("Response Text:", response.text)
+                st.write("Debug - Response parsing error:", str(e))
+                st.write("Raw response text:", response.text)
                 raise e
         except Exception as e:
             error_msg = f"Registration failed: {str(e)}"
+            if "connection" in str(e).lower():
+                error_msg = "Unable to connect to the server. Please try again later."
             st.session_state.auth_error = error_msg
             st.error(error_msg)
             return None
