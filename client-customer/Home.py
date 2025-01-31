@@ -5,6 +5,7 @@ from components.book_details import render_book_details
 from components.book_grid import render_main_page
 from components.checkout_form import render_checkout_form
 from components.shopping_cart import render_shopping_cart
+from pages.admin import render_admin_page
 from styles.custom_styles import apply_custom_styles
 from utils.session import initialize_session_state
 
@@ -40,5 +41,11 @@ elif st.session_state.page == 'register':
     render_registration_form()
 elif st.session_state.page == 'profile':
     render_profile()
+elif st.session_state.page == 'admin':
+    if st.session_state.get('role') != 'admin':
+        st.error("Access denied. Admin privileges required.")
+        st.session_state.page = 'home'
+        st.rerun()
+    render_admin_page()
 else:
     render_main_page() 

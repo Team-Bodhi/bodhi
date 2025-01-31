@@ -1,5 +1,6 @@
 import streamlit as st
 from services.auth import auth_service
+from utils.session import initialize_session_state
 
 
 def render_login_form():
@@ -302,28 +303,27 @@ def render_auth_menu():
     """Render the authentication menu in the sidebar"""
     with st.sidebar:
         if st.session_state.is_authenticated:
+            st.write(f"Welcome, {st.session_state.username}!")
             
-            # Get the name from the correct location in the user object
-            name = st.session_state.user.get('firstName', 'User')
-            st.write(f"Welcome, {name}!")
+            # Show admin link for admin users
+            if st.session_state.get('role') == 'admin':
+                if st.button("Admin Dashboard"):
+                    st.session_state.page = 'admin'
+                    st.rerun()
             
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("My Account", key="sidebar_account"):
-                    st.session_state.page = 'profile'
-                    st.rerun()
-            with col2:
-                if st.button("Logout", key="sidebar_logout"):
-                    auth_service.logout()
-                    st.session_state.page = 'main'
-                    st.rerun()
+            if st.button("My Profile"):
+                st.session_state.page = 'profile'
+                st.rerun()
+                
+            if st.button("Logout"):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                initialize_session_state()
+                st.rerun()
         else:
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Login", key="sidebar_login"):
-                    st.session_state.page = 'login'
-                    st.rerun()
-            with col2:
-                if st.button("Register", key="sidebar_register"):
-                    st.session_state.page = 'register'
-                    st.rerun() 
+            if st.button("Login"):
+                st.session_state.page = 'login'
+                st.rerun()
+            if st.button("Register"):
+                st.session_state.page = 'register'
+                st.rerun() 

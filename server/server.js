@@ -57,6 +57,7 @@ const userRoutes = require('./routes/users.js');
 const saleRoutes = require('./routes/sales.js');
 const reportRoutes = require('./routes/reports.js');
 const authRoutes = require('./routes/auth.js');
+const adminRoutes = require('./routes/admin.js');
 
 app.use('/', indexRoute);
 app.use('/api/books', bookRoutes);
@@ -65,6 +66,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/sales', saleRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 // TODO
 // Customer order routes
