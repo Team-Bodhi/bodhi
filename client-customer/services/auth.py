@@ -272,10 +272,10 @@ class AuthService:
                 st.error("Please login to view your orders")
                 return None
                 
-            # Get the current user's ID to filter sales
-            customer_id = st.session_state.user.get('_id')
+            # Get the current user's profile ID (customer ID) to filter sales
+            customer_id = st.session_state.user.get('profileId')
             if not customer_id:
-                st.error("Customer ID not found")
+                st.error("Customer profile ID not found")
                 return None
                 
             response = requests.get(
