@@ -89,43 +89,57 @@ class AuthService:
                 }
             )
             
+            # Add debug logging
+            print(f"Login response status: {response.status_code}")
+            print(f"Login response: {response.text}")
             
             if response.status_code == 200:
                 data = response.json()
-                user_data = data.get('data', {}).get('user', {})
-                token = data.get('data', {}).get('token')
+                if not data.get('data'):
+                    st.error("Invalid server response format")
+                    return False
+                    
+                user_data = data['data'].get('user', {})
+                token = data['data'].get('token')
                 
-                # Get the complete user profile
-                profile_response = requests.get(
-                    f"{self.base_url}/auth/profile",
-                    headers={
-                        'Content-Type': 'application/json',
-                        'Authorization': f'Bearer {token}'
-                    }
-                )
+                if not user_data or not token:
+                    st.error("Missing user data or token in response")
+                    return False
                 
-                if profile_response.status_code == 200:
-                    profile_data = profile_response.json()
-                    # Merge profile data with user data
-                    user_data.update(profile_data)
-                
+                # Store user data and token
                 st.session_state.token = token
                 st.session_state.user = user_data
                 st.session_state.is_authenticated = True
                 st.session_state.auth_error = None
                 
-                # Debug stored user data
-                st.write("Debug - Stored User Data:", st.session_state.user)
+                # Store permissions if available
+                if 'permissions' in data['data']:
+                    st.session_state.permissions = data['data']['permissions']
+                
                 return True
             else:
-                error_msg = response.json().get("error", "Login failed")
-                st.session_state.auth_error = error_msg
-                st.error(error_msg)
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get('error', 'Unknown error')
+                    
+                    # Provide more user-friendly error messages
+                    if error_msg == 'Invalid credentials':
+                        error_msg = "Incorrect email or password. Please try again."
+                    elif 'not found' in error_msg.lower():
+                        error_msg = "No account found with this email address."
+                    elif 'password' in error_msg.lower():
+                        error_msg = "Incorrect password. Please try again."
+                    
+                    st.error(error_msg)
+                except:
+                    st.error("Login failed. Please check your credentials and try again.")
                 return False
+                
+        except requests.exceptions.ConnectionError:
+            st.error("Unable to connect to the server. Please check your internet connection and try again.")
+            return False
         except Exception as e:
-            error_msg = f"Login failed: {str(e)}"
-            st.session_state.auth_error = error_msg
-            st.error(error_msg)
+            st.error(f"An unexpected error occurred: {str(e)}")
             return False
     
     def logout(self):
