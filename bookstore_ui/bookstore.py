@@ -171,6 +171,26 @@ def fetch_orders(supplier_name=None, status=None):
         st.error("Failed to fetch orders. Please try again.")
         return []
 
+# Function to update an existing book 
+def update_mfr_order(order_id, orderNumber, supplierName, status, booksOrdered, totalCost, orderedDate, expectedDate):
+    updated_book = {
+        "orderNumber": orderNumber,
+        "supplierName": supplierName,
+        "status": status,
+        "booksOrdered": booksOrdered,
+        "totalCost": totalCost,
+        "orderedDate": orderedDate,
+        "expectedDate": expectedDate,
+    }
+        
+    response = requests.put(f"{API_MFRORDER_URL}/{order_id}", json=updated_book)
+    if response.status_code == 200:
+        st.success(f"Book '{orderNumber}' updated successfully!")
+        return True
+    else:
+        st.error(f"Failed to update order: {response.text}")
+        return False
+
 def cancel_order(order_id):
     response = requests.put(f"{API_BASE_URL}/cancel/{order_id}")
     if response.status_code == 200:
@@ -327,26 +347,72 @@ def order_details(order_id):
     order = fetch_order_by_id(order_id)
 
     if order:
-        st.write(f"**Supplier Name**: {order['supplierName']}")
-        st.write(f"**Status**: {order['status']}")
-        st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
-        date = formatDatetime(order['orderDate'])
-        st.write(f"**Order Date**: {date}")
-        date = formatDatetime(order['expectedDeliveryDate'])
-        st.write(f"**Expected Delivery Date**: {date}")    
-                
-        st.subheader("Books Ordered:")
-        # Display table headers with Streamlit columns 
-        header_cols = st.columns([3, 3, 3, 2])
-        header_cols[0].write("Title")
-        header_cols[1].write("Author")
-        header_cols[2].write("Genre")
-        header_cols[3].write(" Order Quantity")
-        for book in order['booksOrdered']:
-            book_details = fetch_book_by_id(str(book['bookId']))
+        if order['status'] == 'pending':
+            # update functionality
+            with st.form("update_mfr_order_form",clear_on_submit=True):
+                new_orderNum = st.text_input("Order Number", value=order["orderNumber"])
+                new_supplier = st.text_input("Supplier Name", value=order["supplierName"])
+                new_status = st.selectbox("Status", ["Pending", "Shipped", "Received"])
+                new_totalCost = st.number_input("Total Cost", min_value=0.0, value=float(order["totalCost"]))
+                new_orderDate = st.date_input("Order Date", format="MM/DD/YYYY", value=order["orderDate"])
+                new_expected = st.date_input("Expected Date", format="MM/DD/YYYY", value=order["expectedDeliveryDate"])
+
+                st.subheader("Books Ordered:")
+                # Display table headers with Streamlit columns 
+                header_cols = st.columns([3, 3, 3, 2])
+                header_cols[0].write("Title")
+                header_cols[1].write("Author")
+                header_cols[2].write("Genre")
+                header_cols[3].write(" Order Quantity")
+                for book in order['booksOrdered']:
+                    book_details = fetch_book_by_id(str(book['bookId']))
+                            
+                    cols = st.columns([2, 2, 2, 1])
+                    cols[0].write(book_details.get("title", "N/A"))
+                    cols[1].write(book_details.get("author", "N/A"))
+                    cols[2].write(book_details.get("genre", "N/A"))
+                    cols[3].write(str(book.get('quantity')))
+
+                update_submitted = st.form_submit_button("Update Order")
+                if update_submitted:
+                    success = update_mfr_order(
+                        order["_id"],
+                        new_orderNum,
+                        new_supplier,
+                        new_status.lower(),
+                        order['booksOrdered'],
+                        float(new_totalCost),
+                        new_orderDate,
+                        new_expected,
+                    )
+                    if success:
+                        st.success(f"Order #{new_orderNum} updated successfully!")
+                        # Clear the selected order and refresh the orders
+                        st.rerun()   
+
+        else:
+            st.write(f"**Supplier Name**: {order['supplierName']}")
+            st.write(f"**Status**: {order['status']}")
+            st.write(f"**Total Cost**: ${order['totalCost']:.2f}")
+            date = formatDatetime(order['orderDate'])
+            st.write(f"**Order Date**: {date}")
+            date = formatDatetime(order['expectedDeliveryDate'])
+            st.write(f"**Expected Delivery Date**: {date}")    
                     
-            cols = st.columns([2, 2, 2, 1])
-            cols[0].write(book_details.get("title", "N/A"))
-            cols[1].write(book_details.get("author", "N/A"))
-            cols[2].write(book_details.get("genre", "N/A"))
-            cols[3].write(str(book.get('quantity')))
+            st.subheader("Books Ordered:")
+            # Display table headers with Streamlit columns 
+            header_cols = st.columns([3, 3, 3, 2])
+            header_cols[0].write("Title")
+            header_cols[1].write("Author")
+            header_cols[2].write("Genre")
+            header_cols[3].write(" Order Quantity")
+            for book in order['booksOrdered']:
+                book_details = fetch_book_by_id(str(book['bookId']))
+                        
+                cols = st.columns([2, 2, 2, 1])
+                cols[0].write(book_details.get("title", "N/A"))
+                cols[1].write(book_details.get("author", "N/A"))
+                cols[2].write(book_details.get("genre", "N/A"))
+                cols[3].write(str(book.get('quantity')))
+    else:
+        st.subheader("No order found")
