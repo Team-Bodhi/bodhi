@@ -124,7 +124,8 @@ router.post('/login', async (req, res) => {
                     role: user.role,
                     firstName: profile.firstName,
                     lastName: profile.lastName,
-                    profileType: user.profileType
+                    profileType: user.profileType,
+                    profileId: user.profileId
                 },
                 permissions: {
                     canManageUsers: user.role === 'admin',

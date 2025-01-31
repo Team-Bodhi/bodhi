@@ -108,6 +108,9 @@ class AuthService:
                 
                 # Store user data and token
                 st.session_state.token = token
+                # Store both the user ID and profile ID
+                user_data['_id'] = user_data.get('id')  # User ID
+                user_data['profileId'] = user_data.get('profileId')  # Customer profile ID
                 st.session_state.user = user_data
                 st.session_state.is_authenticated = True
                 st.session_state.auth_error = None
@@ -115,6 +118,9 @@ class AuthService:
                 # Store permissions if available
                 if 'permissions' in data['data']:
                     st.session_state.permissions = data['data']['permissions']
+                
+                # Fetch complete profile data immediately after login
+                self.get_customer_profile()
                 
                 return True
             else:
@@ -168,25 +174,35 @@ class AuthService:
         
         headers = self.get_headers()
         try:
-            
-            # Get the profile ID from the session - use _id since this is the customer's profile ID
-            profile_id = st.session_state.user.get('_id')
+            # Get the profile ID (Customer ID) from the session
+            profile_id = st.session_state.user.get('profileId')
             if not profile_id:
-                st.error("Customer profile not found. Please try logging out and back in.")
+                st.error("Customer profile ID not found. Please try logging out and back in.")
                 return False
 
+            # Add debug logging
+            st.write("Debug - Fetching profile with ID:", profile_id)
+            
             # Fetch customer profile using the customers endpoint
             response = requests.get(
                 f"{self.base_url}/customers/{profile_id}",
                 headers=headers
             )
             
+            st.write("Debug - Profile response status:", response.status_code)
             
             if response.status_code == 200:
                 profile_data = response.json()
+                st.write("Debug - Profile response:", profile_data)
+                
                 # Check if the response has a data wrapper
                 if 'data' in profile_data:
                     profile_data = profile_data['data']
+                
+                # Ensure we have both user ID and profile ID set correctly
+                profile_data['_id'] = st.session_state.user['_id']  # Keep the user ID
+                profile_data['profileId'] = profile_id  # Keep the profile/customer ID
+                
                 # Merge profile data with existing user data
                 st.session_state.user.update(profile_data)
                 return True
@@ -206,19 +222,43 @@ class AuthService:
             
         headers = self.get_headers()
         try:
+            # Get the profile ID (Customer ID) from the session
+            profile_id = st.session_state.user.get('profileId')
+            if not profile_id:
+                st.error("Customer profile ID not found. Please try logging out and back in.")
+                return False
+
+            # Add debug logging
+            st.write("Debug - Updating profile with ID:", profile_id)
+            st.write("Debug - Update data:", profile_data)
+            
+            # Use the customers endpoint with the profile ID
             response = requests.put(
-                f"{self.base_url}/customers/{st.session_state.user.get('_id')}",
+                f"{self.base_url}/customers/{profile_id}",
                 headers=headers,
                 json=profile_data
             )
             
+            st.write("Debug - Update response status:", response.status_code)
+            
             if response.status_code == 200:
                 updated_profile = response.json()
-                # Update session state with new profile data
+                st.write("Debug - Update response:", updated_profile)
+                
+                # Check if the response has a data wrapper
+                if 'data' in updated_profile:
+                    updated_profile = updated_profile['data']
+                
+                # Ensure we maintain both IDs
+                updated_profile['_id'] = st.session_state.user['_id']  # Keep the user ID
+                updated_profile['profileId'] = profile_id  # Keep the profile ID
+                
+                # Merge profile data with existing user data
                 st.session_state.user.update(updated_profile)
                 return True
             else:
-                st.error("Failed to update profile")
+                error_msg = response.json().get('error', 'Unknown error occurred')
+                st.error(f"Failed to update profile: {error_msg}")
                 return False
                 
         except Exception as e:
