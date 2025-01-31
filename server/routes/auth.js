@@ -44,7 +44,6 @@ router.post('/register', async (req, res) => {
         const customer = new Customer({
             firstName,
             lastName,
-            email,
             phone,
             address,
             userId: user._id  // Set the userId from the created user
@@ -57,6 +56,9 @@ router.post('/register', async (req, res) => {
 
         // Generate token
         const token = generateToken(user);
+
+        // Get the complete customer profile
+        const customerProfile = await customer.populate('userId');
 
         res.status(201).json({
             token,

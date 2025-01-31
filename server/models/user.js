@@ -36,7 +36,8 @@ const userSchema = new mongoose.Schema({
   profileId: {
     type: mongoose.Schema.Types.ObjectId,
     // We'll set this after creating the profile
-    required: false
+    required: false,
+    refPath: 'profileType'
   },
   profileType: {
     type: String,
@@ -46,6 +47,9 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Add index for faster lookups and cascading
+userSchema.index({ profileId: 1, profileType: 1 });
 
 // Pre-save hook to hash password
 userSchema.pre('save', async function(next) {
@@ -67,5 +71,20 @@ userSchema.methods.getProfile = async function() {
 };
 
 const User = mongoose.model('User', userSchema);
+
+// Set up cascading delete trigger in MongoDB
+User.watch().on('change', async (change) => {
+  if (change.operationType === 'delete') {
+    try {
+      const deletedUser = change.fullDocument;
+      if (deletedUser && deletedUser.profileId && deletedUser.profileType) {
+        const Model = mongoose.model(deletedUser.profileType);
+        await Model.deleteOne({ _id: deletedUser.profileId });
+      }
+    } catch (error) {
+      console.error('Error in cascade delete:', error);
+    }
+  }
+});
 
 module.exports = User; 

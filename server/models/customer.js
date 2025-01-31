@@ -11,14 +11,6 @@ const customerSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    lowercase: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
-  },
   phone: {
     type: String,
     required: true,
@@ -69,9 +61,32 @@ customerSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
 });
 
+// Virtual for email (from User document)
+customerSchema.virtual('email', {
+  ref: 'User',
+  localField: 'userId',
+  foreignField: '_id',
+  justOne: true,
+  get: function(user) {
+    return user ? user.email : null;
+  }
+});
+
 // Add index for common queries
 customerSchema.index({ phone: 1 });
+customerSchema.index({ userId: 1 });  // Index for faster lookups and cascading
 
 const Customer = mongoose.model('Customer', customerSchema);
+
+// Set up cascading delete trigger in MongoDB
+Customer.watch().on('change', async (change) => {
+  if (change.operationType === 'delete') {
+    try {
+      await mongoose.model('User').deleteOne({ _id: change.documentKey.userId });
+    } catch (error) {
+      console.error('Error in cascade delete:', error);
+    }
+  }
+});
 
 module.exports = Customer; 
