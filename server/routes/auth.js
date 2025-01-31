@@ -21,6 +21,9 @@ const generateToken = (user) => {
 
 // Register new customer
 router.post('/register', async (req, res) => {
+    let createdUser = null;
+    let createdCustomer = null;
+    
     try {
         const { email, username, password, firstName, lastName, phone, address } = req.body;
 
@@ -31,56 +34,80 @@ router.post('/register', async (req, res) => {
         }
 
         // Create user account first
-        const user = new User({
+        createdUser = new User({
             email,
             username,
             password,
             role: 'customer',
             profileType: 'Customer'
         });
-        await user.save();
+        await createdUser.save();
 
         // Create customer profile with user reference
-        const customer = new Customer({
-            firstName,
-            lastName,
-            phone,
-            address,
-            userId: user._id  // Set the userId from the created user
-        });
-        await customer.save();
+        try {
+            createdCustomer = new Customer({
+                firstName,
+                lastName,
+                phone,
+                address,
+                userId: createdUser._id  // Set the userId from the created user
+            });
+            await createdCustomer.save();
 
-        // Update user with customer reference
-        user.profileId = customer._id;
-        await user.save();
+            // Update user with customer reference
+            createdUser.profileId = createdCustomer._id;
+            await createdUser.save();
 
-        // Generate token
-        const token = generateToken(user);
+            // Generate token
+            const token = generateToken(createdUser);
 
-        // Get the complete customer profile
-        const customerProfile = await customer.populate('userId');
+            // Get the complete customer profile
+            const customerProfile = await createdCustomer.populate('userId');
 
-        res.status(201).json({
-            token,
-            user: {
-                id: user._id,
-                email: user.email,
-                role: user.role,
-                ...customer.toObject()
+            res.status(201).json({
+                token,
+                user: {
+                    id: createdUser._id,
+                    email: createdUser.email,
+                    role: createdUser.role,
+                    profileId: createdCustomer._id,
+                    ...createdCustomer.toObject()
+                }
+            });
+        } catch (customerError) {
+            // If customer creation fails, clean up the user
+            if (createdUser) {
+                await User.findByIdAndDelete(createdUser._id);
             }
-        });
+            throw customerError;  // Re-throw to be caught by outer catch
+        }
     } catch (error) {
         console.error('Registration error:', error);
-        // If we failed after creating the user but before creating the customer,
-        // we should clean up the user
-        if (error.errors?.userId) {
-            try {
-                await User.findOneAndDelete({ email: req.body.email });
-            } catch (cleanupError) {
-                console.error('Cleanup error:', cleanupError);
+        
+        // Cleanup any created resources if something failed
+        try {
+            if (createdCustomer) {
+                await Customer.findByIdAndDelete(createdCustomer._id);
             }
+            if (createdUser) {
+                await User.findByIdAndDelete(createdUser._id);
+            }
+        } catch (cleanupError) {
+            console.error('Cleanup error:', cleanupError);
         }
-        res.status(500).json({ error: 'Registration failed' });
+
+        // Send appropriate error message
+        let errorMessage = 'Registration failed';
+        if (error.code === 11000) {
+            errorMessage = 'Email or username already exists';
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        res.status(500).json({ 
+            error: errorMessage,
+            details: error.message 
+        });
     }
 });
 
