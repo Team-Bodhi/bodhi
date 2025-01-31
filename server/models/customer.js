@@ -61,16 +61,6 @@ customerSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
 });
 
-// Virtual for email (from User document)
-customerSchema.virtual('email', {
-  ref: 'User',
-  localField: 'userId',
-  foreignField: '_id',
-  justOne: true,
-  get: function(user) {
-    return user ? user.email : null;
-  }
-});
 
 // Add index for common queries
 customerSchema.index({ phone: 1 });

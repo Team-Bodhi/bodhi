@@ -69,31 +69,33 @@ def render_checkout_form():
         # Shipping Information
         with st.container():
             st.subheader("📦 Shipping Address")
-            
+        
             # Get user data if authenticated
             user = st.session_state.user if st.session_state.is_authenticated else None
-            
+            # Get address from user data if available
+            user_address = user.get('address', {}) if user else {}
+        
             col1, col2 = st.columns(2)
             with col1:
                 street = st.text_input(
                     "Street Address",
-                    value=user["address"]["street"] if user else "",
+                    value=user_address.get('street', ''),
                     placeholder="123 Main St"
                 )
                 city = st.text_input(
                     "City",
-                    value=user["address"]["city"] if user else "",
+                    value=user_address.get('city', ''),
                     placeholder="Anytown"
                 )
             with col2:
                 state = st.text_input(
                     "State",
-                    value=user["address"]["state"] if user else "",
+                    value=user_address.get('state', ''),
                     placeholder="CA"
                 )
                 zip_code = st.text_input(
                     "ZIP Code",
-                    value=user["address"]["zip"] if user else "",
+                    value=user_address.get('zip', ''),
                     placeholder="12345"
                 )
         
@@ -105,7 +107,7 @@ def render_checkout_form():
             ["credit", "debit"],
             format_func=lambda x: x.title() + " Card"
         )
-    
+        
     with summary_col:
         st.subheader("Order Summary")
         total_items = sum(item["quantity"] for item in st.session_state.cart)
@@ -152,7 +154,7 @@ def render_checkout_form():
                     "totalPrice": float(st.session_state.total_amount),
                     "customerId": st.session_state.user.get("_id") if st.session_state.is_authenticated else None
                 }
-                
+            
                 st.write("Debug - Submitting order:", order_data)
                 success, response = api_service.submit_order(order_data)
                 st.write("Debug - Order submission result:", success, response)
