@@ -173,7 +173,7 @@ def fetch_orders(supplier_name=None, status=None):
 
 # Function to update an existing book 
 def update_mfr_order(order_id, orderNumber, supplierName, status, booksOrdered, totalCost, orderedDate, expectedDate):
-    updated_book = {
+    updated_order = {
         "orderNumber": orderNumber,
         "supplierName": supplierName,
         "status": status,
@@ -182,8 +182,9 @@ def update_mfr_order(order_id, orderNumber, supplierName, status, booksOrdered, 
         "orderedDate": orderedDate,
         "expectedDate": expectedDate,
     }
+    print(updated_order)
         
-    response = requests.put(f"{API_MFRORDER_URL}/{order_id}", json=updated_book)
+    response = requests.put(f"{API_MFRORDER_URL}/{order_id}", json=updated_order)
     if response.status_code == 200:
         st.success(f"Book '{orderNumber}' updated successfully!")
         return True
@@ -195,6 +196,7 @@ def cancel_order(order_id):
     response = requests.put(f"{API_BASE_URL}/cancel/{order_id}")
     if response.status_code == 200:
         st.success(f"Order canceled successfully!")
+        st.rerun()
         return True
     else:
         st.error(f"Failed to cancel order: {response.text}")
@@ -305,6 +307,7 @@ def create_order():
 
         # Select book titles from the inventory
         books = fetch_books()
+    
         book_titles = [book['title'] for book in books]
         book_title = st.selectbox("Select Book", book_titles if books else [], key=f'book_{booksInOrder}')
                 
@@ -329,6 +332,7 @@ def create_order():
             # Handle the response
             if response.status_code == 201:
                 st.success(f"Order '{order_number}' created successfully.")
+                st.rerun()
             elif response.status_code == 400:
                 st.error(" Invalid input or order already exists")
             else:
@@ -363,15 +367,16 @@ def order_details(order_id):
                 header_cols[0].write("Title")
                 header_cols[1].write("Author")
                 header_cols[2].write("Genre")
-                header_cols[3].write(" Order Quantity")
+                header_cols[3].write("Order Quantity")
                 for book in order['booksOrdered']:
+
                     book_details = fetch_book_by_id(str(book['bookId']))
                             
                     cols = st.columns([2, 2, 2, 1])
-                    cols[0].write(book_details.get("title", "N/A"))
-                    cols[1].write(book_details.get("author", "N/A"))
-                    cols[2].write(book_details.get("genre", "N/A"))
-                    cols[3].write(str(book.get('quantity')))
+                    cols[0].write(book_details["title"])
+                    cols[1].write(book_details["author"])
+                    cols[2].write(book_details["genre"])
+                    cols[3].write(book['quantity'])
 
                 update_submitted = st.form_submit_button("Update Order")
                 if update_submitted:
@@ -382,8 +387,8 @@ def order_details(order_id):
                         new_status.lower(),
                         order['booksOrdered'],
                         float(new_totalCost),
-                        new_orderDate,
-                        new_expected,
+                        str(new_orderDate),
+                        str(new_expected),
                     )
                     if success:
                         st.success(f"Order #{new_orderNum} updated successfully!")
@@ -406,13 +411,19 @@ def order_details(order_id):
             header_cols[1].write("Author")
             header_cols[2].write("Genre")
             header_cols[3].write(" Order Quantity")
-            for book in order['booksOrdered']:
-                book_details = fetch_book_by_id(str(book['bookId']))
-                        
-                cols = st.columns([2, 2, 2, 1])
-                cols[0].write(book_details.get("title", "N/A"))
-                cols[1].write(book_details.get("author", "N/A"))
-                cols[2].write(book_details.get("genre", "N/A"))
-                cols[3].write(str(book.get('quantity')))
+            try:
+                for book in order['booksOrdered']:
+                    book_details = fetch_book_by_id(str(book['bookId']))
+                    print(book_details)
+                    cols = st.columns([2, 2, 2, 1])
+                    cols[0].write(book_details['title'])
+                    cols[1].write(book_details['author'])
+                    cols[2].write(book_details['genre'])
+                    cols[3].write(book['quantity'])
+            except:
+                st.write("One or more books from the order has been deleted from the system.")
+
+            # in case a book from the order is deleted
+
     else:
         st.subheader("No order found")
