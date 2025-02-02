@@ -261,28 +261,26 @@ if st.session_state.logged_in:
 
         try:
             if selected_trend == "Sales Over Time":
-                trend_data = requests.get(f"{API_BASE_URL}/sales/trends/time").json()
-                if trend_data:
-                    st.line_chart(trend_data)
-                else:
-                    st.write("No data available for this trend.")
-
+                response = requests.get(f"{API_SALESREPORTS_URL}/daily")
             elif selected_trend == "Top Selling Books":
-                top_books_data = requests.get(f"{API_BASE_URL}/sales/trends/top-books").json()
-                if top_books_data:
-                    st.bar_chart(top_books_data)
-                else:
-                    st.write("No data available for this trend.")
-
+                response = requests.get(f"{API_SALESREPORTS_URL}/top-books")
             elif selected_trend == "Revenue by Genre":
-                revenue_data = requests.get(f"{API_BASE_URL}/sales/trends/revenue-by-genre").json()
-                if revenue_data:
-                    st.bar_chart(revenue_data)
+                response = requests.get(f"{API_SALESREPORTS_URL}/top-genres")
+
+            if response.status_code == 200:
+                trend_data = response.json()
+                if trend_data:
+                    if selected_trend == "Sales Over Time":
+                        st.line_chart(trend_data)
+                    else:
+                        st.bar_chart(trend_data)
                 else:
-                    st.write("No data available for this trend.")
+                    st.warning("No data available for this trend.")
+            else:
+                st.error(f"Failed to fetch trend data: {response.text}")
+
         except requests.exceptions.RequestException as e:
             st.error(f"Error fetching trend data: {e}")
-
 
     # Orders Page
     elif page == "Orders":

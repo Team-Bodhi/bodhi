@@ -9,6 +9,7 @@ if not API_BASE_URL:
 API_BOOKS_URL = API_BOOKS_URL = f"{API_BASE_URL}/books"
 API_USER_URL = f"{API_BASE_URL}/users"
 API_MFRORDER_URL = f"{API_BASE_URL}/manufacturerOrders"
+API_SALESREPORTS_URL = f"{API_BASE_URL}/reports/sales"
 
 # Define all functions
 
