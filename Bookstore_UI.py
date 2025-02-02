@@ -309,7 +309,7 @@ if st.session_state.logged_in:
 
         orders = fetch_orders()
         if orders:
-            header_cols = st.columns([2, 2, 3, 2, 1, 2, 2])
+            header_cols = st.columns([3, 2, 3, 2, 2, 2, 2])
             header_cols[0].write("Order Number")
             header_cols[1].write("Status")
             header_cols[2].write("Supplier Name")
@@ -320,16 +320,16 @@ if st.session_state.logged_in:
             for order in orders:
                 order_id = order['_id']
                 date = ""
-                cols = st.columns([2, 2, 3, 2, 1, 2, 2])
+                cols = st.columns([3, 2, 3, 2, 2, 2, 2])
                 cols[0].write(order.get("orderNumber", "N/A"))
                 cols[1].write(str(order.get("status", "N/A")).capitalize())
                 cols[2].write(order.get("supplierName", "N/A"))
                 cols[3].write(formatDate(order['orderDate']))
                 cols[4].write(f"${order['totalCost']:.2f}")
-                if cols[5].button("Details", key=f'order_{order['_id']}'):
-                    order_details(order['_id'])
-                if cols[6].button("Cancel", key=f'cancel_{order['_id']}'):
-                    cancel_order(str(order['_id']))
+                if cols[5].button("Details", key=f'order_{order_id}'):
+                    order_details(order_id)
+                if cols[6].button("Cancel", key=f'cancel_{order_id}'):
+                    cancel_order(order_id)
 
 else: 
     page = "Home"

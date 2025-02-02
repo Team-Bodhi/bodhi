@@ -165,7 +165,6 @@ def fetch_orders(supplier_name=None, status=None):
          params['status'] = status
         
     response = requests.get(API_MFRORDER_URL, params=params)
-    print(response)
     if response.status_code == 200:
         return response.json()  # Returns list of orders as JSON
     else:
@@ -183,7 +182,6 @@ def update_mfr_order(order_id, orderNumber, supplierName, status, booksOrdered, 
         "orderedDate": orderedDate,
         "expectedDate": expectedDate,
     }
-    print(updated_order)
         
     response = requests.put(f"{API_MFRORDER_URL}/{order_id}", json=updated_order)
     if response.status_code == 200:
@@ -194,7 +192,8 @@ def update_mfr_order(order_id, orderNumber, supplierName, status, booksOrdered, 
         return False
 
 def cancel_order(order_id):
-    response = requests.put(f"{API_BASE_URL}/cancel/{order_id}")
+    orderIdFormatted = str(order_id)
+    response = requests.put(f"{API_MFRORDER_URL}/cancel/{orderIdFormatted}")
     if response.status_code == 200:
         st.success(f"Order canceled successfully!")
         st.rerun()
@@ -395,7 +394,6 @@ def order_details(order_id):
                         st.success(f"Order #{new_orderNum} updated successfully!")
                         # Clear the selected order and refresh the orders
                         st.rerun()   
-
         else:
             st.write(f"**Supplier Name**: {order['supplierName']}")
             st.write(f"**Status**: {order['status']}")
@@ -415,7 +413,6 @@ def order_details(order_id):
             try:
                 for book in order['booksOrdered']:
                     book_details = fetch_book_by_id(str(book['bookId']))
-                    print(book_details)
                     cols = st.columns([2, 2, 2, 1])
                     cols[0].write(book_details['title'])
                     cols[1].write(book_details['author'])
@@ -424,7 +421,22 @@ def order_details(order_id):
             except:
                 st.write("One or more books from the order has been deleted from the system.")
 
-            # in case a book from the order is deleted
+            # in case a book from the order is deleted^^
+
+            # if the status is shipped, give the user the ability to receive it
+            if order['status'] == 'shipped':
+                if st.button("Receive"):
+                    update_mfr_order(
+                        order_id=order["_id"],
+                        orderNumber=order['orderNumber'],
+                        supplierName=order['supplierName'],
+                        status='received',
+                        booksOrdered=order['booksOrdered'],
+                        totalCost=order['totalCost'],
+                        orderedDate=order['orderDate'],
+                        expectedDate=order['expectedDeliveryDate']
+                    )
+                    st.rerun()
 
     else:
         st.subheader("No order found")
