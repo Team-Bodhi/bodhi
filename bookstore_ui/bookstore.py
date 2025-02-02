@@ -134,17 +134,6 @@ def delete_book(book_id):
 
 
 # Functions for creating orders
-# Add books to order
-def add_book_to_order(booksInOrder):
-    # Select book titles from the inventory
-    books = fetch_books()
-    book_titles = [book['title'] for book in books]
-    book_title = st.selectbox("Select Book", book_titles if books else [], key=f'book_{booksInOrder}')
-                
-    # Input other fields
-    quantity_to_order = st.number_input("Quantity to Order", key=f'book_{booksInOrder}_qty', min_value=1, value=1)
-
-  
     
 # Function to fetch mfr order by id
 def fetch_order_by_id(order_id):
@@ -182,6 +171,19 @@ def update_mfr_order(order_id, orderNumber, supplierName, status, booksOrdered, 
         "orderedDate": orderedDate,
         "expectedDate": expectedDate,
     }
+
+    # if order status is received, add qty to stock
+    if status == 'received':
+        for book in booksOrdered:
+            bookDetails = fetch_book_by_id(book['bookId'])
+            update_book(
+                book_id=book['bookId'], 
+                title=bookDetails['title'], 
+                author=bookDetails['author'], 
+                genre=bookDetails['genre'], 
+                quantity=(int(bookDetails['quantity']) + int(book['quantity'])), 
+                price=bookDetails['price']
+            )
         
     response = requests.put(f"{API_MFRORDER_URL}/{order_id}", json=updated_order)
     if response.status_code == 200:
@@ -190,6 +192,8 @@ def update_mfr_order(order_id, orderNumber, supplierName, status, booksOrdered, 
     else:
         st.error(f"Failed to update order: {response.text}")
         return False
+
+# cancel an order
 
 def cancel_order(order_id):
     orderIdFormatted = str(order_id)
