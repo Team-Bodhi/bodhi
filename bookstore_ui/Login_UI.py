@@ -39,7 +39,19 @@ def create_account():
                 st.warning("All fields are required to create an account.")
 
 def login_section():
-    # Login Section
+    # Splash Page Content
+    st.title("📚 Bodhi Books Management System")
+    st.header("Preserving Literary Treasures, One Page at a Time")
+    
+    st.write("Welcome to the Bodhi Books Management System — your gateway to efficiently managing our exclusive collection of rare and antique books.")
+    
+    st.write("This app is designed to empower our employees with the tools they need to:")
+    st.markdown("""
+    * Manage inventory of rare books
+    * Create purchase orders for restocking
+    * View sales records and generate reports
+    """)
+        
     if not st.session_state.logged_in:
         st.divider()
         st.subheader("🔐 Login")
