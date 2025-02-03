@@ -306,7 +306,7 @@ if st.session_state.logged_in:
                     # Display sales in an expandable table
                     for sale in sales_data:
                         with st.expander(
-                            f"Order #{sale.get('orderNumber', 'N/A')} - {sale['orderDate']} - ${sale['totalPrice']:.2f}"
+                            f"Order #{sale.get('_id')} - {sale['orderDate']} - ${sale['totalPrice']:.2f}"
                         ):
                             col1, col2 = st.columns(2)
                             
