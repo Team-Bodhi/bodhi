@@ -8,6 +8,7 @@ if not API_BASE_URL:
 
 API_BOOKS_URL = API_BOOKS_URL = f"{API_BASE_URL}/books"
 API_USER_URL = f"{API_BASE_URL}/users"
+API_AUTH_URL = f"{API_BASE_URL}/auth"
 API_MFRORDER_URL = f"{API_BASE_URL}/manufacturerOrders"
 API_SALESREPORTS_URL = f"{API_BASE_URL}/reports/sales"
 
@@ -207,58 +208,58 @@ def cancel_order(order_id):
         return False
 
 # Function for adding a new user
-def add_user_api(username, password, first_name, last_name, role):
+def add_user_api(email, password, first_name, last_name, role):
     new_user = {
-        "username": username,
+        "email": email,
         "password": password,
         "firstName": first_name,
         "lastName": last_name,
         "role": role
     }
-    response = requests.post(f"{API_USER_URL}", json=new_user)
-
-    if response.status_code == 201:
-        return "User created successfully."
-    elif response.status_code == 400:
-        return "Invalid input or username already exists."
-    else:
-        return "Failed to create account. Please try again."
-
-# Function to validate login
-def validate_login_api(username, password):
-    credentials = {
-        "username": username,
-        "password": password
-    }
-    response = requests.post(f"{API_USER_URL}/login", json=credentials)
-    if response.status_code == 200:
-        data = response.json()
-        if data.get("message") == "Login successful":
-            user_info = data.get("user", {})
-            st.session_state.role = user_info.get("role")
-            st.session_state.username = user_info.get("username")
-            return True #login successful
-        elif response.status_code == 401:
-            st.error("Invalid username or password.")
+    try:
+        response = requests.post(f"{API_AUTH_URL}/register", json=new_user)
+        response_data = response.json()
+        
+        if response.status_code == 201:
+            return "Employee account created successfully! You can now log in."
         elif response.status_code == 400:
-            st.error("Missing username or password.")
+            return response_data.get("error", "Invalid input or email already exists.")
         else:
-            st.error("failed to log in. Please try again.")
-        return False # Login failed
-    
+            return response_data.get("error", "Failed to create account. Please try again.")
+    except Exception as e:
+        return f"Error creating account: {str(e)}"
+
 # Function to handle login
 def handle_login():
-    role = validate_login_api(st.session_state.temp_username, st.session_state.temp_password)
-    if role:
-        # update the session state for successful login
-        st.session_state.logged_in = True
-        st.session_state.username = st.session_state.temp_username
-        st.session_state.role = role
-        # Set a flag to clear fields on rerun
-        st.session_state.clear_fields = True
-        st.rerun()
-    else:
-        st.error("Invalid username or password. Please try again.")
+    try:
+        credentials = {
+            "email": st.session_state.temp_email,
+            "password": st.session_state.temp_password
+        }
+        response = requests.post(f"{API_AUTH_URL}/login", json=credentials)
+        response_data = response.json()
+        
+        if response.status_code == 200 and response_data.get("success"):
+            user_data = response_data.get("data", {}).get("user", {})
+            
+            # Update session state with user info
+            st.session_state.logged_in = True
+            st.session_state.role = user_data.get("role")
+            st.session_state.name = f"{user_data.get('firstName', '')} {user_data.get('lastName', '')}"
+            st.session_state.clear_fields = True
+            
+            return True
+        else:
+            error_msg = response_data.get("error", "Login failed. Please try again.")
+            st.error(error_msg)
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        st.error(f"Connection error: {str(e)}")
+        return False
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {str(e)}")
+        return False
 
 
 #########################################################################

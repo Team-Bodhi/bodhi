@@ -9,12 +9,15 @@ const userSchema = new mongoose.Schema({
     trim: true,
     lowercase: true
   },
-  username: {
+  firstName: {
     type: String,
     required: true,
-    unique: true,
-    trim: true,
-    lowercase: true
+    trim: true
+  },
+  lastName: {
+    type: String,
+    required: true,
+    trim: true
   },
   password: {
     type: String,
@@ -32,24 +35,29 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date
   },
-  // Reference to either Customer or Employee document
-  profileId: {
+  // References to profiles (optional)
+  customerId: {
     type: mongoose.Schema.Types.ObjectId,
-    // We'll set this after creating the profile
-    required: false,
-    refPath: 'profileType'
+    ref: 'Customer',
+    required: false
   },
-  profileType: {
-    type: String,
-    required: true,
-    enum: ['Customer', 'Employee']
+  employeeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Employee',
+    required: false
   }
 }, {
   timestamps: true
 });
 
-// Add index for faster lookups and cascading
-userSchema.index({ profileId: 1, profileType: 1 });
+// Add index for faster lookups
+userSchema.index({ customerId: 1 });
+userSchema.index({ employeeId: 1 });
+
+// Virtual for full name
+userSchema.virtual('fullName').get(function() {
+  return `${this.firstName} ${this.lastName}`;
+});
 
 // Pre-save hook to hash password
 userSchema.pre('save', async function(next) {
@@ -64,10 +72,14 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Method to get full profile
+// Method to get profile based on role
 userSchema.methods.getProfile = async function() {
-  const Model = mongoose.model(this.profileType);
-  return await Model.findById(this.profileId);
+  if (this.role === 'customer' && this.customerId) {
+    return await mongoose.model('Customer').findById(this.customerId);
+  } else if (['employee', 'admin'].includes(this.role) && this.employeeId) {
+    return await mongoose.model('Employee').findById(this.employeeId);
+  }
+  return null;
 };
 
 const User = mongoose.model('User', userSchema);
@@ -77,9 +89,13 @@ User.watch().on('change', async (change) => {
   if (change.operationType === 'delete') {
     try {
       const deletedUser = change.fullDocument;
-      if (deletedUser && deletedUser.profileId && deletedUser.profileType) {
-        const Model = mongoose.model(deletedUser.profileType);
-        await Model.deleteOne({ _id: deletedUser.profileId });
+      if (deletedUser) {
+        if (deletedUser.customerId) {
+          await mongoose.model('Customer').deleteOne({ _id: deletedUser.customerId });
+        }
+        if (deletedUser.employeeId) {
+          await mongoose.model('Employee').deleteOne({ _id: deletedUser.employeeId });
+        }
       }
     } catch (error) {
       console.error('Error in cascade delete:', error);

@@ -1,37 +1,27 @@
 const mongoose = require('mongoose');
 
 const customerSchema = new mongoose.Schema({
-  firstName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  lastName: {
-    type: String,
-    required: true,
-    trim: true
-  },
   phone: {
     type: String,
-    required: true,
-    trim: true
+    trim: true,
+    required: false
   },
   address: {
     street: {
       type: String,
-      required: true
+      required: false
     },
     city: {
       type: String,
-      required: true
+      required: false
     },
     state: {
       type: String,
-      required: true
+      required: false
     },
     zip: {
       type: String,
-      required: true
+      required: false
     }
   },
   // Reference to User document for authentication

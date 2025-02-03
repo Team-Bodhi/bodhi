@@ -1,3 +1,7 @@
+import time
+
+import streamlit as st
+
 from bookstore_ui.bookstore import *
 
 # init session state
@@ -12,8 +16,8 @@ def init_session_state():
         st.session_state.role = ""
 
     # Initialize session state variables
-    if "temp_username" not in st.session_state:
-        st.session_state.temp_username = ""
+    if "temp_email" not in st.session_state:
+        st.session_state.temp_email = ""
     if "temp_password" not in st.session_state:
         st.session_state.temp_password = ""
     if "clear_fields" not in st.session_state:
@@ -21,22 +25,32 @@ def init_session_state():
 
 @st.dialog("Create Account")
 def create_account():
-    with st.form("purchase_order_form", clear_on_submit=True):
+    with st.form("employee_account_form", clear_on_submit=False):  # Changed to false to keep form visible until success
         # Input fields for creating a new account
-        new_username = st.text_input("New Username", key="new_username")
-        new_password = st.text_input("New Password", type="password", key="new_password")
+        new_email = st.text_input("Email", key="new_email")
+        new_password = st.text_input("Password", type="password", key="new_password")
+        confirm_password = st.text_input("Confirm Password", type="password", key="confirm_password")
         first_name = st.text_input("First Name", key="first_name")
         last_name = st.text_input("Last Name", key="last_name")
-        role = st.selectbox("Role", ["staff", "manager"], key="role")
         
         submitted = st.form_submit_button("Create Account")
         if submitted:
-            if new_username and new_password and first_name and last_name:
-                response = add_user_api(new_username, new_password, first_name, last_name, role)
-                st.info(response)
-                st.rerun()
-            else:
+            if not all([new_email, new_password, confirm_password, first_name, last_name]):
                 st.warning("All fields are required to create an account.")
+            elif new_password != confirm_password:
+                st.error("Passwords do not match.")
+            else:
+                response = add_user_api(new_email, new_password, first_name, last_name, "employee")
+                
+                # Check if the response indicates success
+                if "successfully" in response.lower():
+                    st.success(response)
+                    st.session_state.clear_fields = True
+                    time.sleep(1)  # Give user time to read the success message
+                    st.rerun()
+                else:
+                    # Show error message but don't close the modal
+                    st.error(response)
 
 def login_section():
     # Splash Page Content
@@ -51,45 +65,42 @@ def login_section():
     * Create purchase orders for restocking
     * View sales records and generate reports
     """)
-        
+    
+    st.write("Use the sidebar to navigate through the different sections of the app.")
+    
     if not st.session_state.logged_in:
         st.divider()
-        st.subheader("🔐 Login")
+        st.subheader("🔐 Employee Login")
         # Clear fields if the flag is set
         if st.session_state.clear_fields:
-            st.session_state.temp_username = ""
+            st.session_state.temp_email = ""
             st.session_state.temp_password = ""
             st.session_state.clear_fields = False  # Reset the flag
         # Temporary variables for login inputs
-        username = st.text_input("Username", key="temp_username")
+        email = st.text_input("Email", key="temp_email")
         password = st.text_input("Password", type="password", key="temp_password")
-        if st.button("Login"):
-            handle_login()
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            if st.button("Login"):
+                if handle_login():
+                    # Check if user is employee or admin
+                    if st.session_state.role not in ["employee", "admin"]:
+                        st.error("Access Denied. This portal is for employees only.")
+                        st.session_state.logged_in = False
+                        st.session_state.role = ""
+                        st.session_state.name = ""
+                    else:
+                        st.rerun()
 
-    # Create account
-
-    # Initialize session state for the expander
-    # FIXME add way to restrict people from creating accounts? (by role)
-    if not st.session_state.logged_in:
-        #if "show_create_account" not in st.session_state:
-            #st.session_state.show_create_account = True  # will change in future
-        st.session_state.show_create_account = True
-        if st.session_state.show_create_account:
-            if st.button("Create Account"):
-                create_account()
-            
-        # Initialize session state for role
-        if 'role' not in st.session_state or st.session_state.role not in ["staff", "manager"]:
-            st.session_state.role = "staff"  # Default to 'staff'
-        
-        
-        # Only show the expander if "show_create_account" is True
-        #if st.session_state.show_create_account:
-            #with st.expander("Create a New Account", expanded=True):
-                
+        # Create account button
+        if not st.session_state.logged_in:
+            st.session_state.show_create_account = True
+            if st.session_state.show_create_account:
+                if st.button("Create Employee Account"):
+                    create_account()
     
 def logout():
-    st.success(f"Welcome, {st.session_state.username}!")
+    st.success(f"Welcome, {st.session_state.name}!")
     if st.button("Logout"):
         st.session_state.logged_in = False
         st.rerun()

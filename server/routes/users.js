@@ -13,7 +13,7 @@ const SALT_ROUNDS = 10;
  *     User:
  *       type: object
  *       required:
- *         - username
+ *         - email
  *         - password
  *         - firstName
  *         - lastName
@@ -22,9 +22,9 @@ const SALT_ROUNDS = 10;
  *         _id:
  *           type: string
  *           description: Auto-generated MongoDB ID
- *         username:
+ *         email:
  *           type: string
- *           description: Unique username
+ *           description: Unique email
  *         password:
  *           type: string
  *           description: Hashed password

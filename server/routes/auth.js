@@ -11,8 +11,7 @@ const generateToken = (user) => {
     return jwt.sign(
         { 
             id: user._id,
-            role: user.role,
-            profileType: user.profileType
+            role: user.role
         },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
@@ -25,7 +24,7 @@ router.post('/register', async (req, res) => {
     let createdCustomer = null;
     
     try {
-        const { email, username, password, firstName, lastName, phone, address } = req.body;
+        const { email, password, firstName, lastName } = req.body;
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
@@ -36,42 +35,36 @@ router.post('/register', async (req, res) => {
         // Create user account first
         createdUser = new User({
             email,
-            username,
+            firstName,
+            lastName,
             password,
-            role: 'customer',
-            profileType: 'Customer'
+            role: 'customer'
         });
         await createdUser.save();
 
-        // Create customer profile with user reference
+        // Create blank customer profile with user reference
         try {
             createdCustomer = new Customer({
-                firstName,
-                lastName,
-                phone,
-                address,
-                userId: createdUser._id  // Set the userId from the created user
+                userId: createdUser._id
             });
             await createdCustomer.save();
 
             // Update user with customer reference
-            createdUser.profileId = createdCustomer._id;
+            createdUser.customerId = createdCustomer._id;
             await createdUser.save();
 
             // Generate token
             const token = generateToken(createdUser);
-
-            // Get the complete customer profile
-            const customerProfile = await createdCustomer.populate('userId');
 
             res.status(201).json({
                 token,
                 user: {
                     id: createdUser._id,
                     email: createdUser.email,
+                    firstName: createdUser.firstName,
+                    lastName: createdUser.lastName,
                     role: createdUser.role,
-                    profileId: createdCustomer._id,
-                    ...createdCustomer.toObject()
+                    customerId: createdCustomer._id
                 }
             });
         } catch (customerError) {
@@ -79,7 +72,7 @@ router.post('/register', async (req, res) => {
             if (createdUser) {
                 await User.findByIdAndDelete(createdUser._id);
             }
-            throw customerError;  // Re-throw to be caught by outer catch
+            throw customerError;
         }
     } catch (error) {
         console.error('Registration error:', error);
@@ -96,22 +89,14 @@ router.post('/register', async (req, res) => {
             console.error('Cleanup error:', cleanupError);
         }
 
-        // Send appropriate error message
-        let errorMessage = 'Registration failed';
-        if (error.code === 11000) {
-            errorMessage = 'Email or username already exists';
-        } else if (error.message) {
-            errorMessage = error.message;
-        }
-        
         res.status(500).json({ 
-            error: errorMessage,
+            error: 'Registration failed',
             details: error.message 
         });
     }
 });
 
-// Login (both customer and employee)
+// Login
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -128,11 +113,8 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Get profile
+        // Get profile if it exists
         const profile = await user.getProfile();
-        if (!profile) {
-            return res.status(404).json({ error: 'Profile not found' });
-        }
 
         // Update last login
         user.lastLogin = new Date();
@@ -148,11 +130,12 @@ router.post('/login', async (req, res) => {
                 user: {
                     id: user._id,
                     email: user.email,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
                     role: user.role,
-                    firstName: profile.firstName,
-                    lastName: profile.lastName,
-                    profileType: user.profileType,
-                    profileId: user.profileId
+                    customerId: user.customerId,
+                    employeeId: user.employeeId,
+                    profile: profile ? profile.toObject() : null
                 },
                 permissions: {
                     canManageUsers: user.role === 'admin',
@@ -250,36 +233,39 @@ router.post('/employee', auth, async (req, res) => {
             return res.status(400).json({ error: 'Email already registered' });
         }
 
-        // Create employee profile
-        const employee = new Employee({
-            firstName,
-            lastName,
-            email,
-            phone,
-            address,
-            jobTitle,
-            role,
-            salary
-        });
-        await employee.save();
-
-        // Create user account
+        // Create user account first
         const user = new User({
             email,
+            firstName,
+            lastName,
             password,
-            role: role || 'employee',
-            profileType: 'Employee',
-            profileId: employee._id
+            role: role || 'employee'
         });
         await user.save();
 
-        // Update employee with user reference
-        employee.userId = user._id;
+        // Create employee profile
+        const employee = new Employee({
+            phone,
+            address,
+            jobTitle,
+            role: role || 'employee',
+            salary,
+            userId: user._id
+        });
         await employee.save();
+
+        // Update user with employee reference
+        user.employeeId = employee._id;
+        await user.save();
 
         res.status(201).json({
             message: 'Employee created successfully',
-            employee: employee.toObject()
+            employee: {
+                ...employee.toObject(),
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email
+            }
         });
     } catch (error) {
         console.error('Employee creation error:', error);
