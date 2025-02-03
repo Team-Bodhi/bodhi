@@ -3,6 +3,57 @@ const router = express.Router();
 const Sale = require('../models/sale');
 const Book = require('../models/book');
 
+// Helper function to build MongoDB query from request parameters
+function buildSalesQuery(req) {
+    const { startDate, endDate, type, orderStatus, bookTitle, genre } = req.query;
+    const query = {};
+
+    // Date range filter
+    if (startDate || endDate) {
+        query.orderDate = {};
+        if (startDate) query.orderDate.$gte = new Date(startDate);
+        if (endDate) query.orderDate.$lte = new Date(endDate);
+    }
+
+    // Sale type filter
+    if (type && type !== 'All') {
+        query.type = type;
+    }
+
+    // Order status filter
+    if (orderStatus && orderStatus !== 'All') {
+        query.orderStatus = orderStatus;
+    }
+
+    // Book title filter - using $regex for fuzzy matching
+    if (bookTitle) {
+        // Split the search term into words for better matching
+        const searchTerms = bookTitle.split(/\s+/).filter(term => term.length > 0);
+        if (searchTerms.length > 0) {
+            // Create a regex pattern that matches any of the words
+            const regexPatterns = searchTerms.map(term => 
+                new RegExp(term.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i')
+            );
+            query['$or'] = [
+                { 'orderItems.bookId.title': { $in: regexPatterns } }
+            ];
+        }
+    }
+
+    // Genre filter - handle both single genre and comma-separated list
+    if (genre) {
+        const genres = genre.split(',').map(g => g.trim());
+        if (genres.length === 1) {
+            query['orderItems.bookId.genre'] = genres[0];
+        } else {
+            query['orderItems.bookId.genre'] = { $in: genres };
+        }
+    }
+
+    console.log('Built query:', JSON.stringify(query, null, 2));
+    return query;
+}
+
 /**
  * @swagger
  * /api/reports/sales/daily:
@@ -27,34 +78,48 @@ const Book = require('../models/book');
  */
 router.get('/sales/daily', async (req, res) => {
     try {
-        const { startDate, endDate } = req.query;
-        const query = {};
+        const query = buildSalesQuery(req);
 
-        if (startDate || endDate) {
-            query.orderDate = {};
-            if (startDate) query.orderDate.$gte = new Date(startDate);
-            if (endDate) query.orderDate.$lte = new Date(endDate);
-        }
-
+        // First lookup books to get their details
         const dailyStats = await Sale.aggregate([
-            { $match: query },
+            {
+                $unwind: "$orderItems"
+            },
+            {
+                $lookup: {
+                    from: "books",
+                    localField: "orderItems.bookId",
+                    foreignField: "_id",
+                    as: "orderItems.bookId"
+                }
+            },
+            {
+                $unwind: "$orderItems.bookId"
+            },
+            {
+                $match: query
+            },
             {
                 $group: {
                     _id: { $dateToString: { format: "%Y-%m-%d", date: "$orderDate" } },
                     totalSales: { $sum: "$totalPrice" },
-                    totalItems: {
-                        $sum: {
-                            $reduce: {
-                                input: "$orderItems",
-                                initialValue: 0,
-                                in: { $add: ["$$value", "$$this.quantity"] }
-                            }
-                        }
-                    },
-                    orderCount: { $sum: 1 }
+                    totalItems: { $sum: "$orderItems.quantity" },
+                    orderCount: { 
+                        $addToSet: "$_id" // Use addToSet to count unique orders
+                    }
                 }
             },
-            { $sort: { _id: 1 } }
+            {
+                $project: {
+                    _id: 1,
+                    totalSales: 1,
+                    totalItems: 1,
+                    orderCount: { $size: "$orderCount" }
+                }
+            },
+            { 
+                $sort: { _id: 1 } 
+            }
         ]);
 
         res.json(dailyStats);
@@ -82,28 +147,40 @@ router.get('/sales/daily', async (req, res) => {
  */
 router.get('/sales/top-genres', async (req, res) => {
     try {
+        const query = buildSalesQuery(req);
         const limit = parseInt(req.query.limit) || 5;
 
         const topGenres = await Sale.aggregate([
-            { $unwind: "$orderItems" },
+            {
+                $unwind: "$orderItems"
+            },
             {
                 $lookup: {
                     from: "books",
                     localField: "orderItems.bookId",
                     foreignField: "_id",
-                    as: "bookDetails"
+                    as: "orderItems.bookId"
                 }
             },
-            { $unwind: "$bookDetails" },
+            {
+                $unwind: "$orderItems.bookId"
+            },
+            {
+                $match: query
+            },
             {
                 $group: {
-                    _id: "$bookDetails.genre",
+                    _id: "$orderItems.bookId.genre",
                     totalSales: { $sum: "$orderItems.quantity" },
                     revenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } }
                 }
             },
-            { $sort: { totalSales: -1 } },
-            { $limit: limit }
+            { 
+                $sort: { totalSales: -1 } 
+            },
+            { 
+                $limit: limit 
+            }
         ]);
 
         res.json(topGenres);
@@ -191,57 +268,100 @@ router.get('/sales/top-books', async (req, res) => {
  */
 router.get('/sales/summary', async (req, res) => {
     try {
-        const { startDate, endDate } = req.query;
-        const query = {};
+        const query = buildSalesQuery(req);
 
-        if (startDate || endDate) {
-            query.orderDate = {};
-            if (startDate) query.orderDate.$gte = new Date(startDate);
-            if (endDate) query.orderDate.$lte = new Date(endDate);
-        }
-
-        const summary = await Sale.aggregate([
-            { $match: query },
+        const pipeline = [
+            {
+                $unwind: "$orderItems"
+            },
+            {
+                $lookup: {
+                    from: "books",
+                    localField: "orderItems.bookId",
+                    foreignField: "_id",
+                    as: "orderItems.bookId"
+                }
+            },
+            {
+                $unwind: "$orderItems.bookId"
+            },
+            {
+                $match: query
+            },
             {
                 $facet: {
                     totalRevenue: [
-                        { $group: { _id: null, total: { $sum: "$totalPrice" } } }
+                        { 
+                            $group: { 
+                                _id: null, 
+                                total: { $sum: "$totalPrice" } 
+                            } 
+                        }
                     ],
                     totalOrders: [
-                        { $group: { _id: null, count: { $sum: 1 } } }
+                        { 
+                            $group: { 
+                                _id: null, 
+                                count: { $addToSet: "$_id" } 
+                            } 
+                        },
+                        {
+                            $project: {
+                                count: { $size: "$count" }
+                            }
+                        }
                     ],
                     averageOrderValue: [
-                        { $group: { _id: null, avg: { $avg: "$totalPrice" } } }
+                        { 
+                            $group: { 
+                                _id: null, 
+                                avg: { $avg: "$totalPrice" } 
+                            } 
+                        }
                     ],
                     salesByType: [
-                        { $group: { 
-                            _id: "$type", 
-                            count: { $sum: 1 }, 
-                            revenue: { $sum: "$totalPrice" } 
-                        } }
+                        { 
+                            $group: { 
+                                _id: "$type", 
+                                count: { $addToSet: "$_id" },
+                                revenue: { $sum: "$totalPrice" } 
+                            } 
+                        },
+                        {
+                            $project: {
+                                _id: 1,
+                                count: { $size: "$count" },
+                                revenue: 1
+                            }
+                        }
                     ],
                     salesByStatus: [
-                        { $group: { _id: "$status", count: { $sum: 1 } } }
+                        { 
+                            $group: { 
+                                _id: "$orderStatus", 
+                                count: { $addToSet: "$_id" } 
+                            } 
+                        },
+                        {
+                            $project: {
+                                _id: 1,
+                                count: { $size: "$count" }
+                            }
+                        }
                     ],
                     totalItems: [
                         {
                             $group: {
                                 _id: null,
-                                count: {
-                                    $sum: {
-                                        $reduce: {
-                                            input: "$orderItems",
-                                            initialValue: 0,
-                                            in: { $add: ["$$value", "$$this.quantity"] }
-                                        }
-                                    }
-                                }
+                                count: { $sum: "$orderItems.quantity" }
                             }
                         }
                     ]
                 }
             }
-        ]);
+        ];
+
+        const summary = await Sale.aggregate(pipeline);
 
         // Format the response
         const formattedSummary = {

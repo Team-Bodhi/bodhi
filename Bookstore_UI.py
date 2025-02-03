@@ -145,142 +145,200 @@ if st.session_state.logged_in:
     # Sales Records Page
     elif page == "Sales Records":
         st.title("📊 Sales Records")
-        st.subheader("View and Analyze Sales Data")
-        st.write("""
-        Welcome to the **Sales Records** section. Here you can:
-        - View detailed sales records of rare books.
-        - Generate sales reports.
-        - Analyze trends and performance over time.
-        """)
         
-        # Generate Sales Report
-        st.subheader("Generate Sales Report")
-        with st.form("sales_report_form"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                start_date = st.date_input("Start Date")
-                book_title = st.text_input("Book Title (optional)")
-                order_status = st.selectbox(
-                    "Order Status (optional)", 
-                    options=["", "pending", "shipped", "received", "canceled"],
-                    help="Filter by sale status"
-                )
-            
-            with col2:
-                end_date = st.date_input("End Date")
-                genre = st.text_input("Genre (optional)")
-                sale_type = st.selectbox(
-                    "Sale Type (optional)", 
-                    options=["", "instore", "online"],
-                    help="Filter by sale type (in-store or online)"
-                )
-    
-            # Submit button
-            submitted = st.form_submit_button("Generate Report")
-
-            if submitted:
-                try:
-                    # Debug section to show current values
-                    with st.expander("Debug Information", expanded=False):
-                        st.write("Date range:", start_date, "to", end_date)
-                        st.write("Filters:", {
-                            "Book Title": book_title,
-                            "Genre": genre,
-                            "Order Status": order_status,
-                            "Type": sale_type
-                        })
-                    
-                    # Construct query parameters based on user input
-                    report_params = {
-                        "startDate": start_date.strftime("%Y-%m-%d") if start_date else None,
-                        "endDate": end_date.strftime("%Y-%m-%d") if end_date else None,
-                        "bookTitle": book_title if book_title else None,
-                        "genre": genre if genre else None,
-                        "orderStatus": order_status if order_status else None,
-                        "type": sale_type if sale_type else None
-                    }
-                    
-                    # Filter out None values
-                    report_params = {k: v for k, v in report_params.items() if v}
-
-                    # Show the query being sent
-                    with st.expander("API Request Details", expanded=False):
-                        st.write("Query Parameters:", report_params)
-
-                    # Send request to API
-                    response = requests.get(f"{API_BASE_URL}/sales", params=report_params)
-            
-                    # Check the API response
-                    if response.status_code == 200:
-                        report_data = response.json()
-                        
-                        if not report_data:
-                            st.info("No sales found matching the specified criteria.")
-                        else:
-                            st.write("### Sales Report")
-                            st.write(f"Found {len(report_data)} sales")
-                            
-                            # Display summary statistics
-                            total_revenue = sum(sale.get('totalPrice', 0) for sale in report_data)
-                            total_items = sum(sale.get('totalItems', 0) for sale in report_data)
-                            
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("Total Sales", len(report_data))
-                            with col2:
-                                st.metric("Total Revenue", f"${total_revenue:,.2f}")
-                            with col3:
-                                st.metric("Total Items Sold", total_items)
-                            
-                            # Display the detailed data
-                            st.dataframe(report_data)
-                    else:
-                        st.error(f"Failed to generate report: {response.text}")
-                except requests.exceptions.RequestException as e:
-                    st.error(f"Error generating sales report: {e}")
-
-
-        # Fetch and Display All Sales Records
-#        st.subheader("All Sales Records")
-#        try:
-#            response = requests.get(f"{API_BASE_URL}/sales")  # Replace with the correct endpoint
-#            if response.status_code == 200:
-#                sales_data = response.json()
-#                st.dataframe(sales_data)  # Display sales records in a tabular format
-#            else:
-#                st.write("No sales records found or failed to fetch data.")
-#        except requests.exceptions.RequestException as e:
-#            st.error(f"Error fetching sales data: {e}")
-
+        # Filters Section at the top
+        st.header("🔍 Filter Sales Data")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            start_date = st.date_input("Start Date", key="sales_start_date")
+            sale_type = st.selectbox(
+                "Sale Type",
+                ["All", "online", "instore"],  # Changed to match backend values
+                format_func=lambda x: x.title() if x != "All" else x,
+                key="sale_type_filter"
+            )
         
-        # Sales Trends Analysis
-        st.subheader("Sales Trends and Analysis")
-        trend_options = ["Sales Over Time", "Top Selling Books", "Revenue by Genre"]
-        selected_trend = st.selectbox("Select Trend to Analyze", trend_options)
-
+        with col2:
+            end_date = st.date_input("End Date", key="sales_end_date")
+            status = st.selectbox(
+                "Order Status",
+                ["All", "pending", "shipped", "received", "canceled"],  # Changed to match backend values
+                format_func=lambda x: x.title() if x != "All" else x,
+                key="status_filter"
+            )
+        
+        with col3:
+            book_title = st.text_input("Book Title", key="book_title_filter")
+            genres = st.multiselect(
+                "Genres",
+                ["Science", "Science Fiction", "Mystery", "Fiction", "Romance", "Comic", "Non-Fiction"],
+                key="genre_filter"
+            )
+        
+        # Build filter parameters
+        filter_params = {
+            "startDate": start_date.isoformat() if start_date else None,
+            "endDate": end_date.isoformat() if end_date else None,
+            "type": sale_type if sale_type != "All" else None,  # Removed .lower() since values already match
+            "orderStatus": status if status != "All" else None,  # Removed .lower() since values already match
+            "bookTitle": book_title if book_title else None,
+        }
+        
+        # Add genres as a comma-separated list if any are selected
+        if genres:
+            filter_params["genre"] = ",".join(genres)
+        
+        # Remove None values
+        filter_params = {k: v for k, v in filter_params.items() if v is not None}
+        
         try:
-            if selected_trend == "Sales Over Time":
-                response = requests.get(f"{API_SALESREPORTS_URL}/daily")
-            elif selected_trend == "Top Selling Books":
-                response = requests.get(f"{API_SALESREPORTS_URL}/top-books")
-            elif selected_trend == "Revenue by Genre":
-                response = requests.get(f"{API_SALESREPORTS_URL}/top-genres")
-
-            if response.status_code == 200:
-                trend_data = response.json()
-                if trend_data:
-                    if selected_trend == "Sales Over Time":
-                        st.line_chart(trend_data)
+            # Sales Overview Section
+            st.header("Sales Overview")
+            
+            # Debug filter parameters
+            with st.expander("Debug Filters"):
+                st.write("Applied Filters:", filter_params)
+            
+            # Fetch summary statistics with filters
+            summary_response = requests.get(f"{API_SALESREPORTS_URL}/summary", params=filter_params)
+            if summary_response.status_code == 200:
+                summary_data = summary_response.json()
+                
+                # Display key metrics in columns
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Revenue", f"${summary_data['totalRevenue']:,.2f}")
+                with col2:
+                    st.metric("Total Orders", f"{summary_data['totalOrders']:,}")
+                with col3:
+                    st.metric("Total Items", f"{summary_data['totalItems']:,}")
+                with col4:
+                    st.metric("Avg Order Value", f"${summary_data['averageOrderValue']:,.2f}")
+                
+                # Sales by Type and Status
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.subheader("Sales by Type")
+                    type_data = {
+                        item['_id'] if item['_id'] else 'In-Store': item['revenue'] 
+                        for item in summary_data['salesByType']
+                    }
+                    if type_data:
+                        st.bar_chart(type_data)
                     else:
-                        st.bar_chart(trend_data)
+                        st.info("No sales type data available for the selected filters.")
+                
+                with col2:
+                    st.subheader("Sales by Status")
+                    status_data = {
+                        item['_id'] if item['_id'] else 'Completed': item['count'] 
+                        for item in summary_data['salesByStatus']
+                    }
+                    if status_data:
+                        st.bar_chart(status_data)
+                    else:
+                        st.info("No status data available for the selected filters.")
+            
+            # Sales Trends Section
+            st.header("Sales Trends")
+            
+            # Daily Sales Chart with filters
+            daily_response = requests.get(f"{API_SALESREPORTS_URL}/daily", params=filter_params)
+            if daily_response.status_code == 200:
+                daily_data = daily_response.json()
+                
+                if daily_data:
+                    # Create DataFrame for better visualization
+                    import pandas as pd
+                    df_daily = pd.DataFrame(daily_data)
+                    df_daily['_id'] = pd.to_datetime(df_daily['_id'])
+                    df_daily = df_daily.set_index('_id')
+                    
+                    # Allow user to select metric to view
+                    metric = st.selectbox(
+                        "Select Metric",
+                        ["Total Sales ($)", "Total Items", "Order Count"],
+                        key="daily_metric"
+                    )
+                    
+                    if metric == "Total Sales ($)":
+                        st.line_chart(df_daily['totalSales'])
+                    elif metric == "Total Items":
+                        st.line_chart(df_daily['totalItems'])
+                    else:
+                        st.line_chart(df_daily['orderCount'])
                 else:
-                    st.warning("No data available for this trend.")
-            else:
-                st.error(f"Failed to fetch trend data: {response.text}")
-
-        except requests.exceptions.RequestException as e:
-            st.error(f"Error fetching trend data: {e}")
+                    st.info("No daily sales data available for the selected filters.")
+            
+            # Top Genres Chart with filters
+            st.header("Top Selling Genres")
+            genres_response = requests.get(f"{API_SALESREPORTS_URL}/top-genres", params=filter_params)
+            if genres_response.status_code == 200:
+                genres_data = genres_response.json()
+                
+                if genres_data:
+                    # Create two columns for revenue and quantity
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.subheader("By Revenue")
+                        genre_revenue = {item['_id']: item['revenue'] for item in genres_data}
+                        st.bar_chart(genre_revenue)
+                    
+                    with col2:
+                        st.subheader("By Quantity")
+                        genre_quantity = {item['_id']: item['totalSales'] for item in genres_data}
+                        st.bar_chart(genre_quantity)
+                else:
+                    st.info("No genre data available for the selected filters.")
+            
+            # Detailed Sales List
+            st.header("Sales Details")
+            
+            # Fetch filtered sales data
+            sales_response = requests.get(f"{API_BASE_URL}/sales", params=filter_params)
+            if sales_response.status_code == 200:
+                sales_data = sales_response.json()
+                
+                if not sales_data:
+                    st.info("No sales found matching the specified criteria.")
+                else:
+                    # Display sales in an expandable table
+                    for sale in sales_data:
+                        with st.expander(
+                            f"Order #{sale.get('orderNumber', 'N/A')} - {sale['orderDate']} - ${sale['totalPrice']:.2f}"
+                        ):
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                st.write("**Order Details**")
+                                st.write(f"Type: {sale['type'].title()}")
+                                st.write(f"Status: {sale['orderStatus'].title()}")
+                                st.write(f"Payment Method: {sale['paymentMethod'].title()}")
+                                st.write(f"Total Items: {sale['totalItems']}")
+                            
+                            with col2:
+                                st.write("**Shipping Details**")
+                                if sale.get('shippingAddress'):
+                                    addr = sale['shippingAddress']
+                                    st.write(f"Street: {addr.get('street', 'N/A')}")
+                                    st.write(f"City: {addr.get('city', 'N/A')}")
+                                    st.write(f"State: {addr.get('state', 'N/A')}")
+                                    st.write(f"ZIP: {addr.get('zipCode', 'N/A')}")
+                            
+                            st.write("**Ordered Items**")
+                            for item in sale['orderItems']:
+                                book = item['bookDetails']
+                                st.markdown(f"""
+                                * **{book['title']}** by {book['author']}
+                                  * Quantity: {item['quantity']}
+                                  * Price: ${item['price']:.2f}
+                                  * Genre: {book['genre']}
+                                  * ISBN: {book['isbn']}
+                                """)
+            
+        except Exception as e:
+            st.error(f"Error loading sales data: {str(e)}")
 
     # Orders Page
     elif page == "Orders":
