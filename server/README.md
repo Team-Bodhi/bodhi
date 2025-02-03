@@ -73,6 +73,7 @@ npm install
 ```env
 MONGODB_URI=your_mongodb_uri
 PORT=3000
+JWT_SECRET=your_jwt_secret (Ask Team Bodhi for the secret)
 ```
 
 ### 🏃‍♂️ Running the Server
