@@ -7,15 +7,21 @@ from bookstore_ui.bookstore import *
 # init session state
 
 def init_session_state():
-    # Login State Management
+    # Authentication State
+    if "token" not in st.session_state:
+        st.session_state.token = None
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
-    if "name" not in st.session_state:
-        st.session_state.name = ""
+    if "user" not in st.session_state:
+        st.session_state.user = None
     if "role" not in st.session_state:
-        st.session_state.role = ""
+        st.session_state.role = None
+    if "name" not in st.session_state:
+        st.session_state.name = None
+    if "permissions" not in st.session_state:
+        st.session_state.permissions = None
 
-    # Initialize session state variables
+    # Form State
     if "temp_email" not in st.session_state:
         st.session_state.temp_email = ""
     if "temp_password" not in st.session_state:

@@ -1,7 +1,8 @@
+import time
+
 import requests
 import streamlit as st
 
-# For streamlit cloud deployment uncomment this sesction, comment out local section
 API_BASE_URL = st.secrets["api"]["base_url"]
 if not API_BASE_URL:
     raise ValueError("API_BASE_URL is not set in Streamlit secrets.")
@@ -60,7 +61,7 @@ def fetch_books(genre=None, title=None, author=None):
         params['author'] = author
    
 
-    response = requests.get(API_BOOKS_URL, params=params)
+    response = requests.get(API_BOOKS_URL, params=params, headers=get_auth_headers())
     
     if response.status_code == 200:
         return response.json()  
@@ -71,7 +72,7 @@ def fetch_books(genre=None, title=None, author=None):
 # function to get one book by id
 def fetch_book_by_id(book_id):
 
-    response = requests.get(API_BOOKS_URL + f'/{book_id}')
+    response = requests.get(API_BOOKS_URL + f'/{book_id}', headers=get_auth_headers())
     
     if response.status_code == 200:
         return response.json()  
@@ -93,7 +94,7 @@ def add_book(title, author, genre, quantity, price, language, isbn):
     }
 
     # Send the data to the API
-    response = requests.post(API_BOOKS_URL, json=new_book)
+    response = requests.post(API_BOOKS_URL, json=new_book, headers=get_auth_headers())
     
     # Handle the response
     if response.status_code == 201:
@@ -116,7 +117,7 @@ def update_book(book_id, title, author, genre, quantity, price, language=None, i
     if isbn:
         updated_book["isbn"] = isbn
         
-    response = requests.put(f"{API_BOOKS_URL}/{book_id}", json=updated_book)
+    response = requests.put(f"{API_BOOKS_URL}/{book_id}", json=updated_book, headers=get_auth_headers())
     if response.status_code == 200:
         st.success(f"Book '{title}' updated successfully!")
         return True
@@ -127,7 +128,7 @@ def update_book(book_id, title, author, genre, quantity, price, language=None, i
     
 # Function to delete a book
 def delete_book(book_id):
-    response = requests.delete(f"{API_BOOKS_URL}/{book_id}")
+    response = requests.delete(f"{API_BOOKS_URL}/{book_id}", headers=get_auth_headers())
     if response.status_code == 200:
         st.success("Book deleted successfully.")
     else:
@@ -138,7 +139,7 @@ def delete_book(book_id):
     
 # Function to fetch mfr order by id
 def fetch_order_by_id(order_id):
-    response = requests.get(API_MFRORDER_URL + f'/{order_id}')
+    response = requests.get(API_MFRORDER_URL + f'/{order_id}', headers=get_auth_headers())
     if response.status_code == 200:
         return response.json()  # Returns list of orders as JSON
     else:
@@ -154,7 +155,7 @@ def fetch_orders(supplier_name=None, status=None):
     if status:
          params['status'] = status
         
-    response = requests.get(API_MFRORDER_URL, params=params)
+    response = requests.get(API_MFRORDER_URL, params=params, headers=get_auth_headers())
     if response.status_code == 200:
         return response.json()  # Returns list of orders as JSON
     else:
@@ -186,7 +187,7 @@ def update_mfr_order(order_id, orderNumber, supplierName, status, booksOrdered, 
                 price=bookDetails['price']
             )
         
-    response = requests.put(f"{API_MFRORDER_URL}/{order_id}", json=updated_order)
+    response = requests.put(f"{API_MFRORDER_URL}/{order_id}", json=updated_order, headers=get_auth_headers())
     if response.status_code == 200:
         st.success(f"Book '{orderNumber}' updated successfully!")
         return True
@@ -198,7 +199,7 @@ def update_mfr_order(order_id, orderNumber, supplierName, status, booksOrdered, 
 
 def cancel_order(order_id):
     orderIdFormatted = str(order_id)
-    response = requests.put(f"{API_MFRORDER_URL}/cancel/{orderIdFormatted}")
+    response = requests.put(f"{API_MFRORDER_URL}/cancel/{orderIdFormatted}", headers=get_auth_headers())
     if response.status_code == 200:
         st.success(f"Order canceled successfully!")
         st.rerun()
@@ -217,17 +218,75 @@ def add_user_api(email, password, first_name, last_name, role):
         "role": role
     }
     try:
-        response = requests.post(f"{API_AUTH_URL}/register", json=new_user)
+        response = requests.post(f"{API_USER_URL}", json=new_user, headers=get_auth_headers())
         response_data = response.json()
         
         if response.status_code == 201:
-            return "Employee account created successfully! You can now log in."
-        elif response.status_code == 400:
-            return response_data.get("error", "Invalid input or email already exists.")
+            return "User created successfully!"
         else:
-            return response_data.get("error", "Failed to create account. Please try again.")
+            return response_data.get("error", "Failed to create user. Please try again.")
     except Exception as e:
-        return f"Error creating account: {str(e)}"
+        return f"Error creating user: {str(e)}"
+
+# Function to update user
+def update_user_api(user_id, email, first_name, last_name, role, is_active, password=None):
+    update_data = {
+        "email": email,
+        "firstName": first_name,
+        "lastName": last_name,
+        "role": role,
+        "isActive": is_active
+    }
+    if password:
+        update_data["password"] = password
+
+    try:
+        response = requests.put(f"{API_USER_URL}/{user_id}", json=update_data, headers=get_auth_headers())
+        response_data = response.json()
+        
+        if response.status_code == 200:
+            return True, "User updated successfully!"
+        else:
+            return False, response_data.get("error", "Failed to update user. Please try again.")
+    except Exception as e:
+        return False, f"Error updating user: {str(e)}"
+
+# Function to delete user
+def delete_user_api(user_id):
+    try:
+        response = requests.delete(f"{API_USER_URL}/{user_id}", headers=get_auth_headers())
+        
+        if response.status_code == 200:
+            return True, "User deleted successfully!"
+        else:
+            response_data = response.json()
+            return False, response_data.get("error", "Failed to delete user. Please try again.")
+    except Exception as e:
+        return False, f"Error deleting user: {str(e)}"
+
+# Function to fetch all users
+def fetch_users_api():
+    try:
+        headers = get_auth_headers()
+        # Add debug logging
+        print("Fetching users with headers:", headers)
+        
+        response = requests.get(f"{API_USER_URL}", headers=headers)
+        # Add debug logging
+        print("Users API response status:", response.status_code)
+        print("Users API response:", response.text)
+        
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 403:
+            st.error("Access denied. Admin privileges required.")
+            return []
+        else:
+            st.error(f"Failed to fetch users. Server returned: {response.text}")
+            return []
+    except Exception as e:
+        st.error(f"Error fetching users: {str(e)}")
+        return []
 
 # Function to handle login
 def handle_login():
@@ -236,31 +295,84 @@ def handle_login():
             "email": st.session_state.temp_email,
             "password": st.session_state.temp_password
         }
+        
+        # Add debug logging
+        print("Attempting login with email:", credentials['email'])
+        
         response = requests.post(f"{API_AUTH_URL}/login", json=credentials)
         response_data = response.json()
         
+        # Add debug logging
+        print("Login response status:", response.status_code)
+        print("Login response:", response_data)
+        
         if response.status_code == 200 and response_data.get("success"):
-            user_data = response_data.get("data", {}).get("user", {})
+            data = response_data.get("data", {})
+            user_data = data.get("user", {})
+            token = data.get("token")
             
-            # Update session state with user info
+            if not user_data or not token:
+                st.error("Invalid server response format")
+                print("Missing user_data or token in response")
+                return False
+            
+            # Store user data and token in session state
+            st.session_state.token = token
             st.session_state.logged_in = True
+            st.session_state.user = user_data
             st.session_state.role = user_data.get("role")
             st.session_state.name = f"{user_data.get('firstName', '')} {user_data.get('lastName', '')}"
             st.session_state.clear_fields = True
+            
+            # Store permissions if available
+            if "permissions" in data:
+                st.session_state.permissions = data["permissions"]
+            
+            # Add debug logging
+            print("Login successful. Token stored:", token[:20] + "...")
+            print("User role:", st.session_state.role)
             
             return True
         else:
             error_msg = response_data.get("error", "Login failed. Please try again.")
             st.error(error_msg)
+            print("Login failed:", error_msg)
             return False
             
     except requests.exceptions.RequestException as e:
         st.error(f"Connection error: {str(e)}")
+        print("Connection error during login:", str(e))
         return False
     except Exception as e:
         st.error(f"An unexpected error occurred: {str(e)}")
+        print("Unexpected error during login:", str(e))
         return False
 
+def logout():
+    """Clear all session state related to authentication"""
+    st.session_state.token = None
+    st.session_state.logged_in = False
+    st.session_state.user = None
+    st.session_state.role = None
+    st.session_state.name = None
+    st.session_state.permissions = None
+    st.session_state.clear_fields = True
+
+def get_auth_headers():
+    """Get headers with JWT token for authenticated requests"""
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    
+    token = st.session_state.get('token')
+    if token:
+        # Add debug logging
+        print("Adding token to headers:", token[:20] + "...")
+        headers['Authorization'] = f'Bearer {token}'
+    else:
+        print("No token found in session state")
+    
+    return headers
 
 #########################################################################
 #                            Modals                                     #
@@ -332,7 +444,7 @@ def create_order():
                 "orderDate": str(order_date),
                 "expectedDeliveryDate": str(expected_delivery_date)
             }
-            response = requests.post(API_MFRORDER_URL, json=new_order)
+            response = requests.post(API_MFRORDER_URL, json=new_order, headers=get_auth_headers())
                     
             # Handle the response
             if response.status_code == 201:
@@ -445,3 +557,91 @@ def order_details(order_id):
 
     else:
         st.subheader("No order found")
+
+@st.dialog("Create User")
+def create_user():
+    with st.form("create_user_form"):
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+        confirm_password = st.text_input("Confirm Password", type="password")
+        first_name = st.text_input("First Name")
+        last_name = st.text_input("Last Name")
+        role = st.selectbox(
+            "Role",
+            options=['customer', 'employee', 'admin']
+        )
+        
+        submitted = st.form_submit_button("Create User")
+        if submitted:
+            if not all([email, password, confirm_password, first_name, last_name]):
+                st.error("All fields are required")
+                return
+                
+            if password != confirm_password:
+                st.error("Passwords do not match")
+                return
+                
+            if len(password) < 6:
+                st.error("Password must be at least 6 characters long")
+                return
+                
+            result = add_user_api(email, password, first_name, last_name, role)
+            if "successfully" in result.lower():
+                st.success(result)
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error(result)
+
+@st.dialog("Edit User")
+def edit_user(user):
+    with st.form("edit_user_form"):
+        # User details
+        email = st.text_input("Email", value=user.get('email', ''))
+        first_name = st.text_input("First Name", value=user.get('firstName', ''))
+        last_name = st.text_input("Last Name", value=user.get('lastName', ''))
+        role = st.selectbox(
+            "Role",
+            options=['customer', 'employee', 'admin'],
+            index=['customer', 'employee', 'admin'].index(user.get('role', 'customer'))
+        )
+        is_active = st.checkbox("Active", value=user.get('isActive', True))
+        
+        # Optional password change
+        st.write("---")
+        st.write("Leave password fields blank to keep current password")
+        new_password = st.text_input("New Password", type="password")
+        confirm_password = st.text_input("Confirm New Password", type="password")
+        
+        submitted = st.form_submit_button("Update User")
+        if submitted:
+            # Validate required fields
+            if not all([email, first_name, last_name]):
+                st.error("Email, first name, and last name are required")
+                return
+                
+            # Validate passwords if provided
+            if new_password or confirm_password:
+                if new_password != confirm_password:
+                    st.error("Passwords do not match")
+                    return
+                if len(new_password) < 6:
+                    st.error("Password must be at least 6 characters long")
+                    return
+            
+            success, message = update_user_api(
+                user['_id'],
+                email,
+                first_name,
+                last_name,
+                role,
+                is_active,
+                new_password if new_password else None
+            )
+            
+            if success:
+                st.success(message)
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error(message)

@@ -10,6 +10,12 @@ Created on Thu Jan  9 17:36:27 2025
 from bookstore_ui.bookstore import *
 from bookstore_ui.Login_UI import *
 
+API_BASE_URL = st.secrets["api"]["base_url"]
+if not API_BASE_URL:
+    raise ValueError("API_BASE_URL is not set in Streamlit secrets.")
+
+API_USER_URL = f"{API_BASE_URL}/users"
+
 # Streamlit UI components
 # Set page configuration (must be the first Streamlit command)
 st.set_page_config(page_title="Bodhi Books Management System", layout="wide")
@@ -22,13 +28,20 @@ login_section()
 if st.session_state.logged_in:
     # Sidebar Navigation
     st.sidebar.header("Navigation")
+    nav_options = ["Home", "Inventory Management", "Sales Records", "Orders"]
+    
+    # Add Admin option only for admin users
+    if st.session_state.role == "admin":
+        nav_options.append("Admin")
+    
     page = st.sidebar.radio(
         "Go to",
-        options=["Home", "Inventory Management", "Sales Records", "Orders"],
+        options=nav_options,
         format_func=lambda x: f"🏠 {x}" if x == "Home" else (
             "📦 Inventory" if x == "Inventory Management" else
             "📊 Sales" if x == "Sales Records" else
-            "🛒 Orders"
+            "🛒 Orders" if x == "Orders" else
+            "⚙️ Admin"
         )
     )
     # Home Page (Always Accessible)
@@ -389,5 +402,124 @@ if st.session_state.logged_in:
                 if cols[6].button("Cancel", key=f'cancel_{order_id}'):
                     cancel_order(order_id)
 
+    # Admin Page
+    elif page == "Admin":
+        st.title("⚙️ Admin Dashboard")
+        
+        # User Management Section
+        st.header("👥 User Management")
+        
+        # Fetch all users
+        users = fetch_users_api()
+        
+        # Create new user button
+        if st.button("➕ Create New User"):
+            create_user()
+        
+        if users:
+            # Display users in a table
+            st.subheader("Current Users")
+            
+            # Table headers
+            cols = st.columns([2, 2, 2, 1, 1, 1])
+            cols[0].write("**Name**")
+            cols[1].write("**Email**")
+            cols[2].write("**Role**")
+            cols[3].write("**Status**")
+            cols[4].write("**Actions**")
+            cols[5].write("")
+            
+            # Display each user
+            for user in users:
+                cols = st.columns([2, 2, 2, 1, 1, 1])
+                cols[0].write(f"{user.get('firstName', '')} {user.get('lastName', '')}")
+                cols[1].write(user.get('email', 'N/A'))
+                
+                # Role with color
+                role = user.get('role', 'N/A').title()
+                role_color = {
+                    'Admin': 'red',
+                    'Employee': 'blue',
+                    'Customer': 'green'
+                }.get(role, 'grey')
+                cols[2].markdown(f"<span style='color: {role_color};'>{role}</span>", unsafe_allow_html=True)
+                
+                # Status with color
+                status = "🟢 Active" if user.get('isActive', True) else "🔴 Inactive"
+                cols[3].write(status)
+                
+                # Edit button
+                if cols[4].button("✏️", key=f"edit_user_{user['_id']}"):
+                    edit_user(user)
+                
+                # Delete button (prevent deleting own account)
+                if user.get('email') != st.session_state.user.get('email'):
+                    if cols[5].button("🗑️", key=f"delete_user_{user['_id']}"):
+                        success, message = delete_user_api(user['_id'])
+                        if success:
+                            st.success(message)
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(message)
+        else:
+            st.info("No users found. Create a new user to get started.")
+
 else: 
     page = "Home"
+
+@st.dialog("Edit User")
+def edit_user(user):
+    with st.form("edit_user_form"):
+        # User details
+        email = st.text_input("Email", value=user.get('email', ''))
+        first_name = st.text_input("First Name", value=user.get('firstName', ''))
+        last_name = st.text_input("Last Name", value=user.get('lastName', ''))
+        role = st.selectbox(
+            "Role",
+            options=['customer', 'employee', 'admin'],
+            index=['customer', 'employee', 'admin'].index(user.get('role', 'customer'))
+        )
+        is_active = st.checkbox("Active", value=user.get('isActive', True))
+        
+        # Optional password change
+        st.write("---")
+        st.write("Leave password fields blank to keep current password")
+        new_password = st.text_input("New Password", type="password")
+        confirm_password = st.text_input("Confirm New Password", type="password")
+        
+        submitted = st.form_submit_button("Update User")
+        if submitted:
+            # Validate passwords if provided
+            if new_password or confirm_password:
+                if new_password != confirm_password:
+                    st.error("Passwords do not match")
+                    return
+            
+            # Prepare update data
+            update_data = {
+                "email": email,
+                "firstName": first_name,
+                "lastName": last_name,
+                "role": role,
+                "isActive": is_active
+            }
+            
+            # Add password if provided
+            if new_password:
+                update_data["password"] = new_password
+            
+            try:
+                response = requests.put(
+                    f"{API_USER_URL}/{user['_id']}",
+                    json=update_data
+                )
+                
+                if response.status_code == 200:
+                    st.success("User updated successfully")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("Failed to update user. Please try again.")
+            except Exception as e:
+                st.error(f"Error updating user: {str(e)}")
