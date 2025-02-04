@@ -218,7 +218,7 @@ def add_user_api(email, password, first_name, last_name, role):
         "role": role
     }
     try:
-        response = requests.post(f"{API_USER_URL}", json=new_user, headers=get_auth_headers())
+        response = requests.post(f"{API_AUTH_URL}/register", json=new_user)
         response_data = response.json()
         
         if response.status_code == 201:
