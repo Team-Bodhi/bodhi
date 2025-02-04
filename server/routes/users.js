@@ -197,42 +197,42 @@ router.post('/', auth, async (req, res) => {
  *       400:
  *         description: Missing username or password
  */
-router.post('/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
+// router.post('/login', async (req, res) => {
+//   try {
+//     const { username, password } = req.body;
 
-    // Validate required fields
-    if (!username || !password) {
-      return res.status(400).json({ success: false, error: 'Username and password are required' });
-    }
+//     // Validate required fields
+//     if (!username || !password) {
+//       return res.status(400).json({ success: false, error: 'Username and password are required' });
+//     }
 
-    // Find user by username
-    const user = await User.findOne({ username: username.toLowerCase() });
+//     // Find user by username
+//     const user = await User.findOne({ username: username.toLowerCase() });
 
-    // If user not found or password doesn't match
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials' });
-    }
+//     // If user not found or password doesn't match
+//     if (!user || !(await bcrypt.compare(password, user.password))) {
+//       return res.status(401).json({ success: false, error: 'Invalid credentials' });
+//     }
 
-    // Create user response object without sensitive data
-    const userResponse = {
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role
-    };
+//     // Create user response object without sensitive data
+//     const userResponse = {
+//       username: user.username,
+//       firstName: user.firstName,
+//       lastName: user.lastName,
+//       role: user.role
+//     };
 
-    res.json({
-      success: true,
-      message: 'Login successful',
-      user: userResponse
-    });
+//     res.json({
+//       success: true,
+//       message: 'Login successful',
+//       user: userResponse
+//     });
 
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ success: false, error: 'Error during login', details: error.message });
-  }
-});
+//   } catch (error) {
+//     console.error('Login error:', error);
+//     res.status(500).json({ success: false, error: 'Error during login', details: error.message });
+//   }
+// });
 
 // Get all users (admin only)
 router.get('/', auth, async (req, res) => {
