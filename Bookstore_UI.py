@@ -365,6 +365,8 @@ if st.session_state.logged_in:
         """)
         # Section: Create Purchase Order Form
         if st.button("Create Order"):
+            if 'booksOrdered' in st.session_state:
+                del st.session_state['booksOrdered']
             create_order()
 
             

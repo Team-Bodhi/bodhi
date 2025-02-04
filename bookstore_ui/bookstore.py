@@ -195,6 +195,30 @@ def update_mfr_order(order_id, orderNumber, supplierName, status, booksOrdered, 
         st.error(f"Failed to update order: {response.text}")
         return False
 
+# delete book from order
+def remove_book(bookId):
+    new_order_list = []
+    if 'booksOrdered' not in st.session_state:
+        st.session_state['booksOrdered'] = []
+    for book in st.session_state['booksOrdered']:
+        if book['bookId'] != bookId:
+            new_order_list.append(book)
+    st.session_state['booksOrdered'] = new_order_list
+    display_books()
+
+# display books in order
+def display_books():
+    if 'booksOrdered' not in st.session_state:
+        st.session_state['booksOrdered'] = []
+
+    cols = st.columns([4,2])
+    for bookOrdered in st.session_state['booksOrdered']:
+        book = fetch_book_by_id(bookOrdered['bookId'])
+        cols[0].write(book['title'])
+        cols[1].write(bookOrdered['quantity'])
+        #if cols[2].button("🗑️", key=f'remove_{bookOrdered['bookId']}'):
+            #remove_book(bookOrdered['bookId'])
+
 # cancel an order
 
 def cancel_order(order_id):
@@ -412,33 +436,56 @@ def edit_book(book):
 #FIXME requires testing
 @st.dialog("Create Order")
 def create_order():
+    if 'booksOrdered' not in st.session_state:
+        st.session_state['booksOrdered'] = []
     st.subheader("Create Purchase Order")
-    booksInOrder = 0
-    with st.form("purchase_order_form", clear_on_submit=True):
-        order_number = st.text_input("Order Number", placeholder="e.g., ORD123")
-        supplier_name = st.text_input("Supplier Name", placeholder="e.g., Book Supplier Inc.")
-        #  status = st.selectbox("Status", ["Pending", "Shipped", "Received"])
-        total_cost = st.number_input("Total Cost", min_value=0.0, step=0.01)
-        order_date = st.date_input("Order Date", format="MM/DD/YYYY")
-        expected_delivery_date = st.date_input("Expected Delivery Date", format="MM/DD/YYYY")
+    booksInOrder = []
+    for bookOrdered in st.session_state['booksOrdered']:
+        book = fetch_book_by_id(bookOrdered['bookId'])
+        booksInOrder.append(book['title'])
+    order_number = st.text_input("Order Number", placeholder="e.g., ORD123")
+    supplier_name = st.text_input("Supplier Name", placeholder="e.g., Book Supplier Inc.")
+    #  status = st.selectbox("Status", ["Pending", "Shipped", "Received"])
+    total_cost = st.number_input("Total Cost", min_value=0.0, step=0.01)
+    order_date = st.date_input("Order Date", format="MM/DD/YYYY")
+    expected_delivery_date = st.date_input("Expected Delivery Date", format="MM/DD/YYYY")
 
-        # Select book titles from the inventory
-        books = fetch_books()
+    # Select book titles from the inventory
+    books = fetch_books()
+    book_titles = [book['title'] for book in books if book not in booksInOrder]
+
+    col1, col2, col3 = st.columns([4, 2, 1])
     
-        book_titles = [book['title'] for book in books]
-        book_title = st.selectbox("Select Book", book_titles if books else [], key=f'book_{booksInOrder}')
+    with col1:
+        book_title = st.selectbox("Book", options=book_titles if books else [], key=f'book_{booksInOrder}', label_visibility="collapsed")
                 
-        # Input other fields
-        quantity_to_order = st.number_input("Quantity to Order", key=f'book_{booksInOrder}_qty', min_value=1, value=1)
+    # Input other fields
+    with col2: 
+        quantity_to_order = st.number_input("Qty", label_visibility="collapsed", key=f'book_{booksInOrder}_qty', min_value=1, value=1)
+    
+    with col3:
+        if st.button("Add"):
+            book_id = fetch_books(title=book_title)[0].get('_id')
+            booksInOrder.append(book_title)
+            st.session_state['booksOrdered'].append({'bookId': book_id, 'quantity': quantity_to_order})
+    
+    st.subheader("Books Ordered:")
 
-        # FIXME always init to pending?
-        submitted = st.form_submit_button("Save Purchase Order")
-        if submitted:
+    header_cols = st.columns([4,2,1])
+    header_cols[0].write("Title")
+    header_cols[1].write("Qty")
+    header_cols[2].write("")
+    display_books()
+    print(st.session_state['booksOrdered'])
+    # FIXME always init to pending?
+
+    if st.button("Submit"):
+        if (None, "") in (order_number, supplier_name, total_cost, order_date, expected_delivery_date, book_title, quantity_to_order):
             book_id = fetch_books(title=book_title)[0].get('_id')
             new_order = {
                 "orderNumber": order_number,
                 "supplierName": supplier_name,
-                "booksOrdered": [{"bookId": book_id, "quantity": quantity_to_order}],
+                "booksOrdered": st.session_state['booksOrdered'],
                 "totalCost": total_cost,
                 "status": "pending",
                 "orderDate": str(order_date),
@@ -449,6 +496,8 @@ def create_order():
             # Handle the response
             if response.status_code == 201:
                 st.success(f"Order '{order_number}' created successfully.")
+                if 'booksOrdered' in st.session_state:
+                    del st.session_state['booksOrdered']
                 st.rerun()
             elif response.status_code == 400:
                 st.error(" Invalid input or order already exists")
@@ -460,8 +509,8 @@ def create_order():
             else:
                 st.error("Failed to match the selected book.")
         else:
-            st.error("Please fill out all required fields.")
-
+            st.error("Please fill in required fields.")
+            
 # open dialog for order details
 @st.dialog("Order Details")
 def order_details(order_id):
