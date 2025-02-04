@@ -566,10 +566,7 @@ def create_user():
         confirm_password = st.text_input("Confirm Password", type="password")
         first_name = st.text_input("First Name")
         last_name = st.text_input("Last Name")
-        role = st.selectbox(
-            "Role",
-            options=['customer', 'employee', 'admin']
-        )
+        role = "employee" # Automatically set to employee for the employee portal
         
         submitted = st.form_submit_button("Create User")
         if submitted:
