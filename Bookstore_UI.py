@@ -369,9 +369,28 @@ if st.session_state.logged_in:
                 del st.session_state['booksOrdered']
             create_order()
 
-            
-        cancel_button = False
-        cancel_order_id = ""
+        # Filters for the search
+        st.subheader("Filter Orders")
+        col1, col2, col3 = st.columns(3)
+    
+        with col1:
+            filter_by_orderNo = st.checkbox("Filter by Order No.")
+            selected_orderNo = st.text_input("Order Number") if filter_by_orderNo else None
+    
+        with col2:
+            filter_by_supplier = st.checkbox("Filter by Supplier")
+            selected_supplier = st.text_input("Supplier Name") if filter_by_supplier else None
+    
+        with col3:
+            filter_by_status = st.checkbox("Filter by Status")
+            selected_status = st.selectbox(label="Status", options=["Pending", "Shipped", "Received", "Canceled"]) if filter_by_status else None
+    
+        # Update fetch_books function based on selected filters
+        filters = {
+            "orderNo": selected_orderNo if filter_by_orderNo else None,
+            "supplierName": selected_supplier if filter_by_supplier else None,
+            "status": selected_status if filter_by_status else None,
+        }
 
         # if order details not selected, hide this state
         if "selected_order" not in st.session_state:
@@ -380,7 +399,7 @@ if st.session_state.logged_in:
         # Section: View Existing Purchase Orders
         st.subheader("Existing Purchase Orders")
 
-        orders = fetch_orders()
+        orders = fetch_orders(**{k: v for k, v in filters.items() if v is not None})
         if orders:
             header_cols = st.columns([3, 2, 3, 2, 2, 2, 2])
             header_cols[0].write("Order Number")

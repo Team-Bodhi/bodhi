@@ -148,12 +148,15 @@ def fetch_order_by_id(order_id):
     
  
 # Function to fetch manufacturer orders
-def fetch_orders(supplier_name=None, status=None):
+def fetch_orders(orderNo=None, supplierName=None, status=None):
     params = {}
-    if supplier_name:
-         params['supplierName'] = supplier_name
+    if orderNo:
+        print(orderNo)
+        params["orderNumber"] = orderNo
+    if supplierName:
+         params['supplierName'] = supplierName
     if status:
-         params['status'] = status
+         params['status'] = str(status).lower()
         
     response = requests.get(API_MFRORDER_URL, params=params, headers=get_auth_headers())
     if response.status_code == 200:
@@ -439,20 +442,19 @@ def create_order():
     if 'booksOrdered' not in st.session_state:
         st.session_state['booksOrdered'] = []
     st.subheader("Create Purchase Order")
-    booksInOrder = []
-    for bookOrdered in st.session_state['booksOrdered']:
-        book = fetch_book_by_id(bookOrdered['bookId'])
-        booksInOrder.append(book['title'])
+    #for bookOrdered in st.session_state['booksOrdered']:
+    #    book = fetch_book_by_id(bookOrdered['bookId'])
     order_number = st.text_input("Order Number", placeholder="e.g., ORD123")
     supplier_name = st.text_input("Supplier Name", placeholder="e.g., Book Supplier Inc.")
     #  status = st.selectbox("Status", ["Pending", "Shipped", "Received"])
     total_cost = st.number_input("Total Cost", min_value=0.0, step=0.01)
     order_date = st.date_input("Order Date", format="MM/DD/YYYY")
     expected_delivery_date = st.date_input("Expected Delivery Date", format="MM/DD/YYYY")
+    booksInOrder = len(st.session_state['booksOrdered'])
 
     # Select book titles from the inventory
     books = fetch_books()
-    book_titles = [book['title'] for book in books if book not in booksInOrder]
+    book_titles = [book['title'] for book in books]
 
     col1, col2, col3 = st.columns([4, 2, 1])
     
@@ -466,7 +468,6 @@ def create_order():
     with col3:
         if st.button("Add"):
             book_id = fetch_books(title=book_title)[0].get('_id')
-            booksInOrder.append(book_title)
             st.session_state['booksOrdered'].append({'bookId': book_id, 'quantity': quantity_to_order})
     
     st.subheader("Books Ordered:")
@@ -476,11 +477,11 @@ def create_order():
     header_cols[1].write("Qty")
     header_cols[2].write("")
     display_books()
-    print(st.session_state['booksOrdered'])
+
     # FIXME always init to pending?
 
     if st.button("Submit"):
-        if (None, "") in (order_number, supplier_name, total_cost, order_date, expected_delivery_date, book_title, quantity_to_order):
+        if (order_number is not None) and (supplier_name is not None):
             book_id = fetch_books(title=book_title)[0].get('_id')
             new_order = {
                 "orderNumber": order_number,
@@ -542,7 +543,7 @@ def order_details(order_id):
                     cols[0].write(book_details["title"])
                     cols[1].write(book_details["author"])
                     cols[2].write(book_details["genre"])
-                    cols[3].write(book['quantity'])
+                    cols[3].write(str(book['quantity']))
 
                 update_submitted = st.form_submit_button("Update Order")
                 if update_submitted:
@@ -583,7 +584,7 @@ def order_details(order_id):
                     cols[0].write(book_details['title'])
                     cols[1].write(book_details['author'])
                     cols[2].write(book_details['genre'])
-                    cols[3].write(book['quantity'])
+                    cols[3].write(str(book['quantity']))
             except:
                 st.write("One or more books from the order has been deleted from the system.")
 

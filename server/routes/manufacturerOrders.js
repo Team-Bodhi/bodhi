@@ -71,6 +71,11 @@ const MfrOrder = require('../models/mfrorders')
  *       - Manufacturer Orders
  *     parameters:
  *       - in: query
+ *         name: orderNumber
+ *         schema:
+ *           type: string
+ *         description: Order Number
+ *       - in: query
  *         name: supplierName
  *         schema:
  *           type: string
@@ -80,11 +85,6 @@ const MfrOrder = require('../models/mfrorders')
  *         schema:
  *           type: string
  *         description: Order Status
- *       - in: query
- *         name: orderDate
- *         schema:
- *           type: string
- *         description: Order date 
  *     responses:
  *       200:
  *         description: List of vendor orders
@@ -97,12 +97,12 @@ const MfrOrder = require('../models/mfrorders')
  */
 router.get('/', async (req, res) => {
   try {
-    const { supplierName, status, orderDate } = req.query;
+    const { orderNumber, supplierName, status } = req.query;
     let query = {};
 
+    if (orderNumber) query.orderNumber = orderNumber;
     if (supplierName) query.supplierName = supplierName;
     if (status) query.status = status;
-    if (orderDate) query.orderDate = orderDate;
 
     console.log('Collection name:', MfrOrder.collection.name);
     console.log('Database name:', mongoose.connection.db.databaseName);
