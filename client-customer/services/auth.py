@@ -24,7 +24,7 @@ class AuthService:
             }
             
             # Add debug logging
-            st.write("Debug - Sending registration data:", {**registration_data, 'password': '*****'})
+            # st.write("Debug - Sending registration data:", {**registration_data, 'password': '*****'})
             
             response = requests.post(
                 f"{self.base_url}/auth/register",
@@ -33,11 +33,11 @@ class AuthService:
             )
             
             # Add debug logging for response
-            st.write("Debug - Registration response status:", response.status_code)
+            # st.write("Debug - Registration response status:", response.status_code)
             
             try:
                 response_data = response.json()
-                st.write("Debug - Registration response:", response_data)
+                # st.write("Debug - Registration response:", response_data)
                 
                 if response.status_code == 201:
                     # Store auth token and user data in session
@@ -64,7 +64,7 @@ class AuthService:
                     st.error(error_msg)
                     return None
             except Exception as e:
-                st.write("Debug - Response parsing error:", str(e))
+                # st.write("Debug - Response parsing error:", str(e))
                 st.write("Raw response text:", response.text)
                 raise e
         except Exception as e:
@@ -110,7 +110,7 @@ class AuthService:
                 st.session_state.token = token
                 # Store both the user ID and profile ID
                 user_data['_id'] = user_data.get('id')  # User ID
-                user_data['profileId'] = user_data.get('profileId')  # Customer profile ID
+                user_data['profileId'] = user_data.get('customerId')  # Use customerId as profileId
                 st.session_state.user = user_data
                 st.session_state.is_authenticated = True
                 st.session_state.auth_error = None
@@ -119,8 +119,9 @@ class AuthService:
                 if 'permissions' in data['data']:
                     st.session_state.permissions = data['data']['permissions']
                 
-                # Fetch complete profile data immediately after login
-                self.get_customer_profile()
+                # Store profile data if available
+                if 'profile' in user_data and user_data['profile']:
+                    st.session_state.user.update(user_data['profile'])
                 
                 return True
             else:
@@ -174,26 +175,26 @@ class AuthService:
         
         headers = self.get_headers()
         try:
-            # Get the profile ID (Customer ID) from the session
-            profile_id = st.session_state.user.get('profileId')
-            if not profile_id:
+            # Get the customer ID from the session
+            customer_id = st.session_state.user.get('customerId') or st.session_state.user.get('profileId')
+            if not customer_id:
                 st.error("Customer profile ID not found. Please try logging out and back in.")
                 return False
 
             # Add debug logging
-            st.write("Debug - Fetching profile with ID:", profile_id)
+            # st.write("Debug - Fetching profile with ID:", customer_id)
             
             # Fetch customer profile using the customers endpoint
             response = requests.get(
-                f"{self.base_url}/customers/{profile_id}",
+                f"{self.base_url}/customers/{customer_id}",
                 headers=headers
             )
             
-            st.write("Debug - Profile response status:", response.status_code)
+            # st.write("Debug - Profile response status:", response.status_code)
             
             if response.status_code == 200:
                 profile_data = response.json()
-                st.write("Debug - Profile response:", profile_data)
+                # st.write("Debug - Profile response:", profile_data)
                 
                 # Check if the response has a data wrapper
                 if 'data' in profile_data:
@@ -201,7 +202,8 @@ class AuthService:
                 
                 # Ensure we have both user ID and profile ID set correctly
                 profile_data['_id'] = st.session_state.user['_id']  # Keep the user ID
-                profile_data['profileId'] = profile_id  # Keep the profile/customer ID
+                profile_data['profileId'] = customer_id  # Keep the profile/customer ID
+                profile_data['customerId'] = customer_id  # Also store as customerId
                 
                 # Merge profile data with existing user data
                 st.session_state.user.update(profile_data)
@@ -229,8 +231,8 @@ class AuthService:
                 return False
 
             # Add debug logging
-            st.write("Debug - Updating profile with ID:", profile_id)
-            st.write("Debug - Update data:", profile_data)
+            # st.write("Debug - Updating profile with ID:", profile_id)
+            # st.write("Debug - Update data:", profile_data)
             
             # Use the customers endpoint with the profile ID
             response = requests.put(
@@ -239,11 +241,11 @@ class AuthService:
                 json=profile_data
             )
             
-            st.write("Debug - Update response status:", response.status_code)
+            # st.write("Debug - Update response status:", response.status_code)
             
             if response.status_code == 200:
                 updated_profile = response.json()
-                st.write("Debug - Update response:", updated_profile)
+                # st.write("Debug - Update response:", updated_profile)
                 
                 # Check if the response has a data wrapper
                 if 'data' in updated_profile:
@@ -272,8 +274,8 @@ class AuthService:
                 st.error("Please login to view your orders")
                 return None
                 
-            # Get the current user's profile ID (customer ID) to filter sales
-            customer_id = st.session_state.user.get('profileId')
+            # Get the current user's customer ID
+            customer_id = st.session_state.user.get('customerId') or st.session_state.user.get('profileId')
             if not customer_id:
                 st.error("Customer profile ID not found")
                 return None
@@ -287,7 +289,6 @@ class AuthService:
             )
             
             if response.status_code == 200:
-                st.session_state.auth_error = None
                 return response.json()
             else:
                 error_msg = response.json().get("error", "Failed to fetch orders")
@@ -326,7 +327,7 @@ class AuthService:
             }
 
             # Debug the formatted order
-            st.write("Debug - Formatted Order:", formatted_order)
+            # st.write("Debug - Formatted Order:", formatted_order)
 
             response = requests.post(
                 f"{self.base_url}/sales",
@@ -335,7 +336,7 @@ class AuthService:
             )
 
             # Debug the response
-            st.write("Debug - Order Response:", response.json())
+            # st.write("Debug - Order Response:", response.json())
 
             if response.status_code == 201:
                 return response.json()

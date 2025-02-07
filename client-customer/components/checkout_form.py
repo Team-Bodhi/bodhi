@@ -6,7 +6,7 @@ from utils.helpers import navigate_to
 
 def render_order_success(order_details):
     """Render the order success screen"""
-    st.write("Debug - Rendering success screen with details:", order_details)
+    # st.write("Debug - Rendering success screen with details:", order_details)
     
     st.balloons()
     st.title("🎉 Order Placed Successfully!")
@@ -155,9 +155,9 @@ def render_checkout_form():
                     "customerId": st.session_state.user.get("_id") if st.session_state.is_authenticated else None
                 }
             
-                st.write("Debug - Submitting order:", order_data)
+                # st.write("Debug - Submitting order:", order_data)
                 success, response = api_service.submit_order(order_data)
-                st.write("Debug - Order submission result:", success, response)
+                # st.write("Debug - Order submission result:", success, response)
                 
                 if success:
                     # Store order details for success screen

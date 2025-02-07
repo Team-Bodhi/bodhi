@@ -45,7 +45,14 @@ router.post('/register', async (req, res) => {
         // Create blank customer profile with user reference
         try {
             createdCustomer = new Customer({
-                userId: createdUser._id
+                userId: createdUser._id,
+                phone: req.body.phone || '',
+                address: {
+                    street: req.body.address?.street || '',
+                    city: req.body.address?.city || '',
+                    state: req.body.address?.state || '',
+                    zip: req.body.address?.zip || ''
+                }
             });
             await createdCustomer.save();
 
@@ -56,6 +63,9 @@ router.post('/register', async (req, res) => {
             // Generate token
             const token = generateToken(createdUser);
 
+            // Get the complete customer profile
+            const customerProfile = await Customer.findById(createdCustomer._id);
+
             res.status(201).json({
                 token,
                 user: {
@@ -64,7 +74,8 @@ router.post('/register', async (req, res) => {
                     firstName: createdUser.firstName,
                     lastName: createdUser.lastName,
                     role: createdUser.role,
-                    customerId: createdCustomer._id
+                    customerId: createdCustomer._id,
+                    profile: customerProfile.toObject()
                 }
             });
         } catch (customerError) {
